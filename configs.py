@@ -12,9 +12,7 @@ root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
 test_dir = os.path.join(exp_dir, 'test')
 plot_dir = os.path.join(exp_dir, 'plots')
-for dir in [exp_dir, test_dir, plot_dir]:
-	if not os.path.exists(dir):
-		os.mkdir(dir)
+
 
 #########################
 #      Data Loader      #

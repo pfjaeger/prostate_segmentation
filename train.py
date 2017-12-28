@@ -16,6 +16,9 @@ fold = parser.parse_args().fold
 if fold is None:
     fold = 0
 
+for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
+    if not os.path.exists(dir):
+        os.mkdir(dir)
 # define graph
 tf.reset_default_graph()
 
