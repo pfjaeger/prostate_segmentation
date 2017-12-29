@@ -17,7 +17,8 @@ import imp
 
 def train(fold):
 
-    # build tf graph
+    logger = utils.get_logger(cf)
+    logger.info('intitializing tensorflow graph...')
     tf.reset_default_graph()
     x = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_channels])
     y = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_classes])
@@ -28,6 +29,8 @@ def train(fold):
     loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, class_weights)
     predicter = tf.nn.softmax(logits)
     dice_per_class = utils.get_dice_per_class(logits, y)
+    optimizer = utils._get_optimizer(loss, learning_rate=learning_rate)
+    saver = tf.train.Saver()
 
     # set up training
     metrics = {}
@@ -35,15 +38,12 @@ def train(fold):
     metrics['val'] = {'loss': [0.], 'dices': np.zeros(shape=(1, cf.n_classes))}
     best_metrics = {'loss': [10, 0], 'dices': np.zeros(shape=(cf.n_classes + 1, 2))}
     file_name = cf.exp_dir + '/monitor_{}.png'.format(fold)
-    TrainingPlot = TrainingPlot_2Panel(cf.n_epochs, file_name, cf.experiment_name,
-                                       cf.class_dict)
+    TrainingPlot = TrainingPlot_2Panel(cf.n_epochs, file_name, cf.experiment_name, cf.class_dict)
 
-    # initialize
-    optimizer = utils._get_optimizer(loss, learning_rate=learning_rate)
-    saver = tf.train.Saver()
+    logger.info('initializing batch generators...')
     batch_gen = data_loader.get_train_generators(cf, fold)
 
-    # training loop
+    logger.info('starting training...')
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for epoch in range(cf.n_epochs):
@@ -80,7 +80,7 @@ def train(fold):
             val_loss = metrics['val']['loss'][-1]
             val_dices = metrics['val']['dices'][-1]
             fg_dice = np.mean(val_dices[1:])
-            print "CHECK DICES", val_dices, fg_dice
+            logger.info('trained epoch {e}: val_loss {l}, val_dices: {d}'.format(e=epoch, l=val_loss, d=val_dices))
             if val_loss < best_metrics['loss'][0]:
                 best_metrics['loss'][0] = val_loss
                 best_metrics['loss'][1] = epoch
@@ -92,7 +92,7 @@ def train(fold):
                 best_metrics['dices'][cf.n_classes][0] = fg_dice
                 best_metrics['dices'][cf.n_classes][1] = epoch
                 saver.save(sess, os.path.join(cf.exp_dir, 'params_{}'.format(fold)))
-
+                logger.info('trained epoch {e}: new best avg dice {d}, saving params...'.format(e=epoch, d=fg_dice))
 
             # monitor training
             TrainingPlot.update_and_save(metrics, best_metrics)
@@ -108,18 +108,21 @@ def train(fold):
 
 def test():
 
-    tf.reset_default_graph()
+    logger = utils.get_logger(cf)
 
-    # define tf graph
+    logger.info('intitializing tensorflow graph...')
+    tf.reset_default_graph()
     x = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_channels])
     logits, variables = create_UNet(x, features_root=cf.features_root, n_classes=cf.n_classes, is_training=False)
     predicter = tf.nn.softmax(logits)
-
-    # initialize
     saver = tf.train.Saver()
+
+
+    logger.info('intitializing test generator...')
     test_data_dict = data_loader.get_test_generator(cf)
     pred_dict = {key: [] for key in test_data_dict.keys()}
 
+    logger.info('starting testing...')
     with tf.Session() as sess:
         for fold in range(cf.n_cv_splits):
             sess.run(tf.global_variables_initializer())
@@ -130,25 +133,25 @@ def test():
                 correct_prediction = np.argmax(soft_prediction, axis=3)
                 dices =  utils.numpy_dice_per_class(utils.get_one_hot_prediction(correct_prediction, cf.n_classes), test_data_dict[pid]['seg'])
                 pred_dict[pid].append(soft_prediction)
-                print "DICES", dices, pid, fold
+                logger.info('starting testing...', dices, pid, fold)
                 plot_batch_prediction(test_data_dict[pid], correct_prediction, cf.n_classes,
                                       os.path.join(cf.plot_dir, '{}_pred_{}.png'.format(pid, fold)))
 
-    print "FINALIZING"
+        logger.info('finalizing...')
     final_dices = []
     for ix, pid in enumerate(test_data_dict.keys()):
         print np.array(pred_dict[pid]).shape
         final_pred = np.argmax(np.mean(np.array(pred_dict[pid]),axis=0),axis=3)
         dices = utils.numpy_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
-        print "FINAL DICES", dices, final_dices.append(dices)
+        logger.info('avg dices...', dices, final_dices.append(dices))
         np.save(os.path.join(cf.exp_dir, '{}_pred_final.npy'.format(pid)), final_pred)
         plot_batch_prediction(test_data_dict[pid], final_pred, cf.n_classes,
                               os.path.join(cf.plot_dir, '{}_pred_final.png'.format(pid)))
 
-    print "final dices", np.mean(final_dices, axis=0)
+    logger.info('final dices', np.mean(final_dices, axis=0))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str,  default='train') # ABREVIATIONS!
@@ -157,11 +160,9 @@ if __name__ == "__main__":
     mode = parser.parse_args().mode
     fold = parser.parse_args().fold
     exp_path = parser.parse_args().exp
-
     for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
         if not os.path.exists(dir):
             os.mkdir(dir)
-
 
     if mode=='train':
         shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs.py'))
@@ -171,4 +172,4 @@ if __name__ == "__main__":
         cf = imp.load_source('cf', os.path.join(exp_path, 'configs.py'))
         test()
     else:
-        print "specified wrong execution mode..."
+        print 'specified wrong execution mode in args...'

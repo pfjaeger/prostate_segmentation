@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'try_dice_new_init'
+experiment_name = 'try_dice_new_init_incl_bg'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -52,7 +52,7 @@ slice_sample_thresh = 0.3
 
 learning_rate = 10**(-3)
 loss_name = 'dice_coefficient'
-class_dict = {0:'bkgd', 1:'PZ', 2: "CG", 3: "FG"}
+class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
 #########################
 #       Testing        #

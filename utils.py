@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+import logging
+import os
 
 
 def _get_loss(logits, y, n_classes, loss_name, class_weights):
@@ -10,7 +12,7 @@ def _get_loss(logits, y, n_classes, loss_name, class_weights):
     regularizer: power of the L2 regularizers added to the loss function
     """
 
-    if loss_name == "cross_entropy":
+    if loss_name == 'cross_entropy':
         flat_logits = tf.reshape(logits, [-1, n_classes])
         flat_labels = tf.reshape(y, [-1, n_classes])
         if class_weights is not None:
@@ -20,15 +22,15 @@ def _get_loss(logits, y, n_classes, loss_name, class_weights):
 
         else:
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits, labels=flat_labels))
-    elif loss_name == "dice_coefficient":
-        loss= 1. - tf.reduce_mean(get_dice_per_class(logits, y)[1:])
+    elif loss_name == 'dice_coefficient':
+        loss= 1. - tf.reduce_mean(get_dice_per_class(logits, y))
 
     return loss
 
 
 def _get_optimizer(loss, learning_rate):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    print "CHECK UPDATE OPS:", update_ops
+    print 'CHECK UPDATE OPS:', update_ops
     if update_ops:
         with tf.control_dependencies(update_ops):
             optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
@@ -79,3 +81,16 @@ def get_one_hot_prediction(pred, n_classes):
 
     return pred_one_hot
 
+
+def get_logger(cf):
+
+
+    logger = logging.getLogger('UNet_training')
+    log_file = cf.exp_dir + '/exec.log'
+    print('Logging to {}'.format(log_file))
+    hdlr = logging.FileHandler(log_file)
+    logger.addHandler(hdlr)
+    # logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.DEBUG)
+    logger.info('Created Exp. Dir: {}.'.format(cf.exp_dir))
+    return logger
