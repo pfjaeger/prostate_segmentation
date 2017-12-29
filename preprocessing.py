@@ -30,9 +30,6 @@ def collectPaths(root_dir, out_dir, split):
             if img_arr.shape==seg_arr.shape:
                 data_arr = np.concatenate((img_arr[:, :, :, np.newaxis], seg_arr[:, :, :, np.newaxis]), axis=3)
                 rs_data_arr = resample_array(data_arr, img_affine)
-                if split !='test':
-                    relevant_slices = np.unique(np.argwhere(rs_data_arr[:, :, :, 1] != 0)[:, 2])
-                    rs_data_arr = rs_data_arr[:, :, np.min(relevant_slices) : np.max(relevant_slices) + 1, :]
                 np.save(os.path.join(out_split_dir, '{}.npy'.format(path.split('/')[-3])), rs_data_arr)
                 print "processed", ix, os.path.join(out_split_dir, '{}.npy'.format(path.split('/')[-3]))
             else:
@@ -53,6 +50,7 @@ def resample_array(src_img, img_affine, target_spacing=0.4):
                    mode='edge')).astype('float32')
 
     return out_array
+
 
 if __name__ == "__main__":
 

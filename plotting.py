@@ -38,9 +38,6 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, n_select_from
 	for b in range(show_arrays.shape[0]):
 		for m in range(show_arrays.shape[3]):
 
-			if m ==0:
-				plt.title(batch['pid'][b])
-
 			if m < data.shape[3]:
 				cmap = 'gray'
 				vmin = None
@@ -52,6 +49,9 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, n_select_from
 
 			axarr[m, b].axis('off')
 			axarr[m, b].imshow(show_arrays[b, :, :, m], cmap=cmap, vmin=vmin, vmax=vmax)
+
+			if m ==0:
+				plt.title(batch['pid'][b])
 
 	plt.savefig(outfile)
 	plt.close(fig)

@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'lean_script_tf'
+experiment_name = 'higher_lr_and_64_fmaps'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -50,12 +50,8 @@ n_val_batches = 20
 batch_size=5
 
 loss_name = 'cross_entropy'
-learning_rate = 10**(-5) #4 for CE
-use_weight_decay = True
-weight_decay = 1e-5
-fp_dice_weight = 0.1
-dpfactor = 0.0
-class_dict = {0:'bkgd', 1:'PZ', 2: "ZG"}
+learning_rate = 10**(-4) #4 for CE
+class_dict = {0:'bkgd', 1:'PZ', 2: "CG", 3: "FG"}
 
 #########################
 #       Testing        #

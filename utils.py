@@ -83,10 +83,18 @@ def get_class_weights(seg):
 	get class weight values for a vector of pixels with sh....
 	return weight vect...
 	"""
-    class_counts = np.sum(np.mean(seg,axis=0), axis=(0,1))
-    class_weights = 1 - (class_counts / float(seg.shape[1] ** 2))
-    return class_weights
+    margin = 0.1 # avoid 0 loss in empty slices.
+    class_counts = np.sum(seg, axis=(1,2))
+    class_weights = 1 - (class_counts / float(seg.shape[1] ** 2)) + margin
+    class_weights_flat = np.repeat(class_weights, seg.shape[1] ** 2, axis=0)
+    return class_weights_flat
 
+#
+# class_counts = np.sum(seg, axis=(2,3))
+# 	weighted_class = 1 - (class_counts / float(seg.shape[2] ** 2))
+# 	weighted_class_flat = np.repeat(weighted_class, seg.shape[2]**2, axis=0) #static vector with general class weights
+# 	flat_target =seg.transpose((0, 2, 3, 1)).reshape((-1, num_classes))
+# 	weights = (flat_target*weighted_class_flat).sum(axis=1).astype('float32')*100 # select weight for pixels using the gt class. blow up for
 
 
 def get_one_hot_prediction(pred, n_classes):

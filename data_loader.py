@@ -12,8 +12,7 @@ from sklearn.model_selection import KFold
 
 
 
-def get_data_generators(cf, fold):
-
+def get_train_generators(cf, fold):
 
     fg = get_cv_fold_ixs(len_data=69)
     train_ix, val_ix = fg[fold]
@@ -24,6 +23,15 @@ def get_data_generators(cf, fold):
     batch_gen['val'] = create_data_gen_pipeline(val_data, cf=cf, do_aug=False)
     return batch_gen
 
+
+def get_test_generator(cf):
+
+    test_data = load_NCI_ISBI_dataset(cf, split='test')
+    test_data_dict = {}
+    for ix, pid in enumerate(test_data['pid']):
+        test_gen = create_data_gen_pipeline(test_data, cf=cf, test_ix=ix, do_aug=False)
+        test_data_dict[pid] = next(test_gen)
+    return test_data_dict
 
 def load_NCI_ISBI_dataset(cf, split='train', ids=()):
 
@@ -37,55 +45,14 @@ def load_NCI_ISBI_dataset(cf, split='train', ids=()):
     return data
 
 
-class BatchGenerator_2D(DataLoaderBase):
+def get_cv_fold_ixs(len_data):
 
-    def __init__(self, data, BATCH_SIZE, PATCH_SIZE=(144, 144), n_batches=None):
-        super(BatchGenerator_2D, self).__init__(data, BATCH_SIZE,  n_batches)
-        self.PATCH_SIZE = PATCH_SIZE
+    fold_list = []
+    kf = KFold(n_splits=5, random_state=0, shuffle=True,)
+    for train_index, val_index in kf.split(range(len_data)):
+        fold_list.append([train_index, val_index])
 
-    def generate_train_batch(self):
-
-        patients = np.random.choice(range(len(self._data['pid'])), self.BATCH_SIZE, replace=True)
-        data = []
-        seg = []
-        pids = []
-        for nb in range(self.BATCH_SIZE):
-            shp = self._data['data'][patients[nb]].shape
-            slice_id = np.random.choice(shp[0])
-            tmp_data = resize_image_by_padding(self._data['data'][patients[nb]][slice_id], (
-            max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
-            tmp_seg = resize_image_by_padding(self._data['seg'][patients[nb]][slice_id],
-                                              (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])),
-                                              pad_value=0)
-
-            data.append(center_crop_2D_image_batched(tmp_data[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
-            seg.append(center_crop_2D_image_batched(tmp_seg[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
-            pids.append(self._data['pid'][patients[nb]])
-        return {'data': np.array(data).astype('float32'), 'seg': np.array(seg).astype('float32'), 'pid': pids}
-
-
-class TestGenerator_2D(DataLoaderBase):
-
-    def __init__(self, data, BATCH_SIZE, PATCH_SIZE, test_ix, n_batches=None):
-        super(TestGenerator_2D, self).__init__(data, BATCH_SIZE,  n_batches)
-        self.PATCH_SIZE = PATCH_SIZE
-        self.test_ix = test_ix
-
-    def generate_train_batch(self):
-
-            data = []
-            seg = []
-            pids = []
-            shp = self._data['data'][self.test_ix].shape
-            for slc in range(shp[0]):
-                tmp_data = resize_image_by_padding(self._data['data'][self.test_ix][slc],
-                                                   (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
-                tmp_seg = resize_image_by_padding(self._data['seg'][self.test_ix][slc],
-                                                  (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])),pad_value=0)
-                data.append(center_crop_2D_image_batched(tmp_data[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
-                seg.append(center_crop_2D_image_batched(tmp_seg[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
-                pids.append(self._data['pid'][self.test_ix])
-            return {'data': np.array(data).astype('float32'), 'seg': np.array(seg).astype('float32'), 'pid': pids}
+    return fold_list
 
 
 def create_data_gen_pipeline(patient_data, cf, test_ix=None, do_aug=True):
@@ -118,12 +85,64 @@ def create_data_gen_pipeline(patient_data, cf, test_ix=None, do_aug=True):
     return multithreaded_generator
 
 
+class BatchGenerator_2D(DataLoaderBase):
 
-def get_cv_fold_ixs(len_data):
+    def __init__(self, data, BATCH_SIZE, PATCH_SIZE=(144, 144), n_batches=None, slice_sample_thresh=0.2):
+        super(BatchGenerator_2D, self).__init__(data, BATCH_SIZE,  n_batches)
+        self.PATCH_SIZE = PATCH_SIZE
+        self.slice_sample_thresh = slice_sample_thresh
 
-    fold_list = []
-    kf = KFold(n_splits=5, random_state=0, shuffle=True,)
-    for train_index, val_index in kf.split(range(len_data)):
-        fold_list.append([train_index, val_index])
+    def generate_train_batch(self):
 
-    return fold_list
+        patients = np.random.choice(range(len(self._data['pid'])), self.BATCH_SIZE, replace=True)
+        data = []
+        seg = []
+        pids = []
+        for b in range(self.BATCH_SIZE):
+            shp = self._data['data'][patients[b]].shape
+
+            #importance sampling
+            is_filled = [1 if np.sum(self._data['seg'][patients[b]][ix]!=0)>0 else 0 for ix in range(shp[0])]
+            filled_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==1]
+            empty_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==0]
+            sample = np.random.uniform()
+            if sample > self.slice_sample_thresh or len(empty_slice_ixs)==0:
+                    slice_ix = np.random.choice(filled_slice_ixs)
+            else:
+                    slice_ix = np.random.choice(empty_slice_ixs)
+
+            tmp_data = resize_image_by_padding(self._data['data'][patients[b]][slice_ix], (
+            max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
+            tmp_seg = resize_image_by_padding(self._data['seg'][patients[b]][slice_ix],
+                                              (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])),
+                                              pad_value=0)
+
+            data.append(center_crop_2D_image_batched(tmp_data[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
+            seg.append(center_crop_2D_image_batched(tmp_seg[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
+            pids.append(self._data['pid'][patients[b]])
+        return {'data': np.array(data).astype('float32'), 'seg': np.array(seg).astype('float32'), 'pid': pids}
+
+
+class TestGenerator_2D(DataLoaderBase):
+
+    def __init__(self, data, BATCH_SIZE, PATCH_SIZE, test_ix, n_batches=None):
+        super(TestGenerator_2D, self).__init__(data, BATCH_SIZE,  n_batches)
+        self.PATCH_SIZE = PATCH_SIZE
+        self.test_ix = test_ix
+
+    def generate_train_batch(self):
+
+            data = []
+            seg = []
+            pids = []
+            shp = self._data['data'][self.test_ix].shape
+            for slc in range(shp[0]):
+                tmp_data = resize_image_by_padding(self._data['data'][self.test_ix][slc],
+                                                   (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
+                tmp_seg = resize_image_by_padding(self._data['seg'][self.test_ix][slc],
+                                                  (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])),pad_value=0)
+                data.append(center_crop_2D_image_batched(tmp_data[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
+                seg.append(center_crop_2D_image_batched(tmp_seg[np.newaxis, np.newaxis, :, :], self.PATCH_SIZE)[0])
+                pids.append(self._data['pid'][self.test_ix])
+            return {'data': np.array(data).astype('float32'), 'seg': np.array(seg).astype('float32'), 'pid': pids}
+

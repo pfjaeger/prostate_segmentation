@@ -153,7 +153,8 @@ def create_IN_UNet(x, features_root=16, num_classes=2, is_training=True):
 def create_nice_UNet(x, features_root=16, n_classes=2, is_training=True):
 
     net = OrderedDict()
-
+    # from tensorflow.contrib.layers.python.layers import initializers
+    # weights_initializer = initializers.variance_scaling_initializer(factor=2.0 mode='FAN_IN' uniform=False) do argument scope!
     net['encode/conv1_1'] = instance_norm(slim.conv2d(x, features_root, [3, 3], activation_fn=leaky_relu))
     net['encode/conv1_2'] = instance_norm(slim.conv2d(net['encode/conv1_1'], features_root, [3, 3], activation_fn=leaky_relu))
     net['encode/pool1'] = slim.max_pool2d(net['encode/conv1_2'], [2, 2])
