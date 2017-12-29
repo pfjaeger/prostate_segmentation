@@ -59,7 +59,7 @@ def create_data_gen_pipeline(patient_data, cf, test_ix=None, do_aug=True):
 
     if test_ix is None:
         data_gen = BatchGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
-                                 PATCH_SIZE=cf.patch_size)
+                                 PATCH_SIZE=cf.patch_size, slice_sample_thresh=cf.slice_sample_thresh)
 
     else:
         data_gen = TestGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,

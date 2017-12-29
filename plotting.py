@@ -113,7 +113,7 @@ def plot_loss_and_dice(ax, ax2, metrics, best_metrics, experiment_name, class_di
 
 	num_epochs = len(metrics['val']['loss'])
 	epochs = range(num_epochs)
-	num_classes = len(best_metrics['dices'])
+	num_classes = len(best_metrics['dices']) -1
 
 	# prepare colors and linestyle
 	num_lines = num_classes + 1
@@ -136,7 +136,7 @@ def plot_loss_and_dice(ax, ax2, metrics, best_metrics, experiment_name, class_di
 
 	# prepare legend
 	if class_dict != None:
-		assert len(class_dict) == num_classes
+		assert len(class_dict) == num_classes +1
 		raw_labels = [class_dict[i] + ' dice' for i in range(num_classes)]
 	else:
 		raw_labels = ['class ' + str(i) + ' dice' for i in range(num_classes)]
@@ -161,7 +161,7 @@ def plot_loss_and_dice(ax, ax2, metrics, best_metrics, experiment_name, class_di
 		.format(experiment_name, np.round(best_metrics['loss'][0],3), best_metrics['loss'][1])
 
 	best_metrics_text = ''
-	for c in range(num_classes):
+	for c in range(num_classes + 1):
 		best_metrics_text += 'Best {}-Dice/Ep = {}/{}\n'.format(class_dict[c], np.round(best_metrics['dices'][c][0],3), int(best_metrics['dices'][c][1]))
 
 	text += best_metrics_text

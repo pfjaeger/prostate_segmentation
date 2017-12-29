@@ -54,7 +54,6 @@ def train(fold):
             for _ in range(cf.n_val_batches):
                 batch = next(batch_gen['val'])
                 cw = utils.get_class_weights(batch['seg'])
-                print "CHECK CLASS WEIGHTS", cw.shape, cw
                 val_loss, val_dices = sess.run(
                     (loss, dice_per_class), feed_dict={x: batch['data'],y: batch['seg'], class_weights: cw})
                 val_loss_running_mean += val_loss / cf.n_val_batches
@@ -80,7 +79,8 @@ def train(fold):
             #evaluate epoch
             val_loss = metrics['val']['loss'][-1]
             val_dices = metrics['val']['dices'][-1]
-            fg_dice = np.mean(val_dices[:1])
+            fg_dice = np.mean(val_dices[1:])
+            print "CHECK DICES", val_dices, fg_dice
             if val_loss < best_metrics['loss'][0]:
                 best_metrics['loss'][0] = val_loss
                 best_metrics['loss'][1] = epoch
@@ -88,9 +88,9 @@ def train(fold):
                 if val_dices[cl] > best_metrics['dices'][cl][0]:
                     best_metrics['dices'][cl][0] = val_dices[cl]
                     best_metrics['dices'][cl][1] = epoch
-            if fg_dice > best_metrics['dices'][cl+1][0]:
-                best_metrics['dices'][cl][0] = fg_dice
-                best_metrics['dices'][cl][1] = epoch
+            if fg_dice > best_metrics['dices'][cf.n_classes][0]:
+                best_metrics['dices'][cf.n_classes][0] = fg_dice
+                best_metrics['dices'][cf.n_classes][1] = epoch
                 saver.save(sess, os.path.join(cf.exp_dir, 'params_{}'.format(fold)))
 
 
@@ -132,7 +132,7 @@ def test():
                 pred_dict[pid].append(soft_prediction)
                 print "DICES", dices, pid, fold
                 plot_batch_prediction(test_data_dict[pid], correct_prediction, cf.n_classes,
-                                      os.path.join(cf.exp_dir, '{}_pred_{}.png'.format(pid, fold)))
+                                      os.path.join(cf.plot_dir, '{}_pred_{}.png'.format(pid, fold)))
 
     print "FINALIZING"
     for ix, pid in enumerate(test_data_dict.keys()):
@@ -140,9 +140,9 @@ def test():
         final_pred = np.argmax(np.mean(np.array(pred_dict[pid]),axis=0),axis=3)
         dices = utils.numpy_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
         print "FINAL DICES", dices
-        np.save(cf.exp_dir, '{}_pred_final.npy'.format(pid), final_pred)
+        np.save(os.path.join(cf.exp_dir, '{}_pred_final.npy'.format(pid)), final_pred)
         plot_batch_prediction(test_data_dict[pid], final_pred, cf.n_classes,
-                              os.path.join(cf.exp_dir, '{}_pred_final.png'.format(pid)))
+                              os.path.join(cf.plot_dir, '{}_pred_final.png'.format(pid)))
 
 
 
@@ -162,11 +162,11 @@ if __name__ == "__main__":
 
 
     if mode=='train':
-        shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'config.py'))
+        shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs.py'))
         for fold in range(cf.n_cv_splits):
             train(fold)
     elif mode=='test':
-        cf = imp.load_source('cf', os.path.join(exp_path))
+        cf = imp.load_source('cf', os.path.join(exp_path, 'configs.py'))
         test()
     else:
         print "specified wrong execution mode..."

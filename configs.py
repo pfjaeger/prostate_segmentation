@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'higher_lr_and_64_fmaps'
+experiment_name = 'hps_slice_sampling'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -43,21 +43,17 @@ data_aug_mode = 'train'
 #########################
 
 n_epochs = 300
-features_root = 64
+features_root = 30
 n_cv_splits = 5
 n_train_batches = 80
 n_val_batches = 20
-batch_size=5
+batch_size=10
+slice_sample_thresh = 0.2
 
+learning_rate = 10**(-3)
 loss_name = 'cross_entropy'
-learning_rate = 10**(-4) #4 for CE
-class_dict = {0:'bkgd', 1:'PZ', 2: "CG", 3: "FG"}
+class_dict = {0:'bkgd', 1:'CG', 2: "PZ", 3: "FG"}
 
 #########################
 #       Testing        #
 #########################
-n_bayes = None
-val_mode = False
-separate_scanner = False
-
-
