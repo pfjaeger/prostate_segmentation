@@ -61,8 +61,8 @@ if __name__ == "__main__":
         os.mkdir(out_dir)
 
     collectPaths(root_dir, out_dir, 'train')
-    collectPaths(root_dir, out_dir, 'leaderboard')
-    collectPaths(root_dir, out_dir, 'test')
+    # collectPaths(root_dir, out_dir, 'leaderboard')
+    # collectPaths(root_dir, out_dir, 'test')
 
 
 

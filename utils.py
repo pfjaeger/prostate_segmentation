@@ -10,27 +10,18 @@ def _get_loss(logits, y, n_classes, loss_name, class_weights):
     regularizer: power of the L2 regularizers added to the loss function
     """
 
-    flat_logits = tf.reshape(logits, [-1, n_classes])
-    flat_labels = tf.reshape(y, [-1, n_classes])
-    # USE FLAT ONES TO ACCESS NEW STANDARD SOFTMAX FUNCTIONS TAHT WORK MORE STABLE?
     if loss_name == "cross_entropy":
-
+        flat_logits = tf.reshape(logits, [-1, n_classes])
+        flat_labels = tf.reshape(y, [-1, n_classes])
         if class_weights is not None:
-
-            weight_map = tf.multiply(flat_labels, class_weights)
-            weight_map = tf.reduce_sum(weight_map, axis=1)
-
-            loss_map = tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits,
-                                                               labels=flat_labels)
-            weighted_loss = tf.multiply(loss_map, weight_map)
-
-            loss = tf.reduce_mean(weighted_loss)
+            weight_map = tf.reduce_sum(tf.multiply(flat_labels, class_weights), axis=1)
+            loss_map = tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits, labels=flat_labels)
+            loss = tf.reduce_mean(tf.multiply(loss_map, weight_map))
 
         else:
-            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits,
-                                                                          labels=flat_labels))
+            loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits, labels=flat_labels))
     elif loss_name == "dice_coefficient":
-        loss= tf.constant(1.) - get_dice_per_class(logits, y)[1]
+        loss= 1. - tf.reduce_mean(get_dice_per_class(logits, y)[1:])
 
     return loss
 
@@ -47,23 +38,11 @@ def _get_optimizer(loss, learning_rate):
 
 
 
-
-
-def softmax_2d(output_map):
-    exponential_map = tf.exp(tf.clip_by_value(output_map,-10, 10))
-    sum_exp = tf.reduce_sum(exponential_map, 3, keep_dims=True)
-    tensor_sum_exp = tf.tile(sum_exp, tf.stack([1, 1, 1, tf.shape(output_map)[3]]))
-    return tf.div(exponential_map,tensor_sum_exp)
-
-
-def get_dice_per_class(logits, y, class_weights=None):
-    eps = tf.constant(float(1e-4))
-    prediction = softmax_2d(logits)
+def get_dice_per_class(logits, y):
+    eps = tf.constant(float(1e-6))
+    prediction = tf.nn.softmax(logits)
     intersection = tf.reduce_sum(prediction * y, axis=(1, 2))
-    if class_weights is None:
-        union = eps + tf.reduce_sum(prediction, axis=(1, 2)) + tf.reduce_sum(y, axis=(1, 2))
-    else:
-        union = eps + tf.reduce_sum(prediction, axis=(1, 2)) + tf.reduce_sum(y, axis=(1, 2))
+    union = eps + tf.reduce_sum(prediction, axis=(1, 2)) + tf.reduce_sum(y, axis=(1, 2))
     dice_per_class = tf.reduce_mean(tf.constant(2.) * intersection / union, axis=0)
     return dice_per_class
 
@@ -88,13 +67,6 @@ def get_class_weights(seg):
     class_weights = 1 - (class_counts / float(seg.shape[1] ** 2)) + margin
     class_weights_flat = np.repeat(class_weights, seg.shape[1] ** 2, axis=0)
     return class_weights_flat
-
-#
-# class_counts = np.sum(seg, axis=(2,3))
-# 	weighted_class = 1 - (class_counts / float(seg.shape[2] ** 2))
-# 	weighted_class_flat = np.repeat(weighted_class, seg.shape[2]**2, axis=0) #static vector with general class weights
-# 	flat_target =seg.transpose((0, 2, 3, 1)).reshape((-1, num_classes))
-# 	weights = (flat_target*weighted_class_flat).sum(axis=1).astype('float32')*100 # select weight for pixels using the gt class. blow up for
 
 
 def get_one_hot_prediction(pred, n_classes):

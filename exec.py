@@ -135,15 +135,17 @@ def test():
                                       os.path.join(cf.plot_dir, '{}_pred_{}.png'.format(pid, fold)))
 
     print "FINALIZING"
+    final_dices = []
     for ix, pid in enumerate(test_data_dict.keys()):
         print np.array(pred_dict[pid]).shape
         final_pred = np.argmax(np.mean(np.array(pred_dict[pid]),axis=0),axis=3)
         dices = utils.numpy_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
-        print "FINAL DICES", dices
+        print "FINAL DICES", dices, final_dices.append(dices)
         np.save(os.path.join(cf.exp_dir, '{}_pred_final.npy'.format(pid)), final_pred)
         plot_batch_prediction(test_data_dict[pid], final_pred, cf.n_classes,
                               os.path.join(cf.plot_dir, '{}_pred_final.png'.format(pid)))
 
+    print "final dices", np.mean(final_dices, axis=0)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,11 @@ def load_NCI_ISBI_dataset(cf, split='train', ids=()):
     data = {}
     data_paths = [os.path.join(in_dir, f) for ix,f in enumerate(os.listdir(in_dir)) if (ix in ids) or len(ids)==0]
     concat_arr = [np.transpose(np.load(ii, mmap_mode='r'), axes=(2, 0, 1, 3)) for ii in data_paths]
+
+    #DELTE!!
+    # relevant_slices = [np.unique(np.argwhere(arr[:, :, :, 1] != 0)[:, 0]) for arr in concat_arr]
+    # concat_arr = [arr[np.min(relevant_slices[ix]): np.max(relevant_slices[ix]), :, :, :] for ix, arr in enumerate(concat_arr)]
+
     data['data'] = [ii[:, :, :, 0] for ii in concat_arr]
     data['seg'] =  [ii[:, :, :, 1] for ii in concat_arr]
     data['pid'] = [ii.split('/')[-1].split('.')[0] for ii in data_paths]
@@ -136,6 +141,7 @@ class TestGenerator_2D(DataLoaderBase):
             seg = []
             pids = []
             shp = self._data['data'][self.test_ix].shape
+
             for slc in range(shp[0]):
                 tmp_data = resize_image_by_padding(self._data['data'][self.test_ix][slc],
                                                    (max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
