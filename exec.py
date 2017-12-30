@@ -108,7 +108,7 @@ def train(fold):
 
 
 
-def test():
+def test(folds):
 
     logger = utils.get_logger(cf)
     logger.info('intitializing tensorflow graph...')
@@ -125,7 +125,7 @@ def test():
 
     logger.info('starting testing...')
     with tf.Session() as sess:
-        for fold in range(cf.n_cv_splits):
+        for fold in folds:
             sess.run(tf.global_variables_initializer())
             saver.restore(sess, os.path.join(cf.exp_dir, 'params_{}'.format(fold)))
 
@@ -134,45 +134,44 @@ def test():
                 correct_prediction = np.argmax(soft_prediction, axis=3)
                 dices =  utils.numpy_dice_per_class(utils.get_one_hot_prediction(correct_prediction, cf.n_classes), test_data_dict[pid]['seg'])
                 pred_dict[pid].append(soft_prediction)
-                logger.info('starting testing...', dices, pid, fold)
+                logger.info('starting testing...{} {} {}'.format(dices, pid, fold))
                 plot_batch_prediction(test_data_dict[pid], correct_prediction, cf.n_classes,
                                       os.path.join(cf.plot_dir, '{}_pred_{}.png'.format(pid, fold)))
 
         logger.info('finalizing...')
     final_dices = []
     for ix, pid in enumerate(test_data_dict.keys()):
-        print np.array(pred_dict[pid]).shape
         final_pred = np.argmax(np.mean(np.array(pred_dict[pid]),axis=0),axis=3)
-        dices = utils.numpy_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
-        logger.info('avg dices...', dices, final_dices.append(dices))
+        avg_dices = utils.numpy_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
+        final_dices.append(avg_dices)
+        logger.info('avg dices... {}'.format(avg_dices))
         np.save(os.path.join(cf.exp_dir, '{}_pred_final.npy'.format(pid)), final_pred)
         plot_batch_prediction(test_data_dict[pid], final_pred, cf.n_classes,
                               os.path.join(cf.plot_dir, '{}_pred_final.png'.format(pid)))
 
-    logger.info('final dices', np.mean(final_dices, axis=0))
+    logger.info('final dices {}'.format(np.mean(final_dices, axis=0)))
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str,  default='train') # ABREVIATIONS!
-    parser.add_argument('--fold', type=int, default=0)
+    parser.add_argument('--folds', nargs='+', type=int, default=[0])
     parser.add_argument('--exp', type=str)
     mode = parser.parse_args().mode
-    fold = parser.parse_args().fold
+    folds = parser.parse_args().folds
     exp_path = parser.parse_args().exp
     for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-    logger = utils.get_logger(cf)
-
     if mode=='train':
         cf = imp.load_source('cf', 'configs.py')
         shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs.py'))
-        train(fold)
+        for fold in folds:
+            train(fold)
     elif mode=='test':
         cf = imp.load_source('cf', os.path.join(exp_path, 'configs.py'))
-        test()
+        test(folds)
     else:
         print 'specified wrong execution mode in args...'

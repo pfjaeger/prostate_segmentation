@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'try_dice_new_init_lower_lr'
+experiment_name = 'try_ce_0.2'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -48,10 +48,10 @@ n_cv_splits = 5
 n_train_batches = 80
 n_val_batches = 20
 batch_size=10
-slice_sample_thresh = 0.3
+slice_sample_thresh = 0.2
 
 learning_rate = 10**(-4) #-3 for wce super high beause loss downweighted.
-loss_name = 'dice_coefficient'
+loss_name = 'cross_entropy'
 class_weights = False
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
