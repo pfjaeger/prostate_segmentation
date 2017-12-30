@@ -39,6 +39,17 @@ def _get_optimizer(loss, learning_rate):
 
 
 
+def get_batch_dice_per_class(logits, y):
+    eps = tf.constant(float(1e-6))
+    prediction = tf.nn.softmax(logits)
+    intersection = tf.reduce_sum(prediction * y, axis=(0, 1, 2))
+    union = eps + tf.reduce_sum(prediction, axis=(0, 1, 2)) + tf.reduce_sum(y, axis=(0, 1, 2))
+    dice_per_class = tf.constant(2.) * intersection / union
+    return dice_per_class
+
+
+
+
 def get_dice_per_class(logits, y):
     eps = tf.constant(float(1e-6))
     prediction = tf.nn.softmax(logits)
@@ -48,6 +59,7 @@ def get_dice_per_class(logits, y):
     return dice_per_class
 
 
+
 def numpy_dice_per_class(prediction, y):
 
 
@@ -55,6 +67,18 @@ def numpy_dice_per_class(prediction, y):
     intersection = np.sum(prediction * y, axis=(1,2))
     union = eps + np.sum(prediction, axis=(1,2)) + np.sum(y, axis=(1,2))
     dice_per_class = np.mean(2 * intersection / union, axis=0)
+    return dice_per_class
+
+
+
+
+def numpy_volume_dice_per_class(prediction, y):
+
+
+    eps = 1e-4
+    intersection = np.sum(prediction * y, axis=(0, 1,2))
+    union = eps + np.sum(prediction, axis=(0, 1,2)) + np.sum(y, axis=(0, 1,2))
+    dice_per_class = 2 * intersection / union
     return dice_per_class
 
 

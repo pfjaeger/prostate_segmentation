@@ -31,7 +31,7 @@ def train(fold):
     else:
         loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name)
     predicter = tf.nn.softmax(logits)
-    dice_per_class = utils.get_dice_per_class(logits, y)
+    dice_per_class = utils.get_batch_dice_per_class(logits, y)
     optimizer = utils._get_optimizer(loss, learning_rate=learning_rate)
     saver = tf.train.Saver()
     # set up training
@@ -140,7 +140,7 @@ def test(folds):
             for ix, pid in enumerate(test_data_dict.keys()):
                 soft_prediction = sess.run(predicter, feed_dict={x: test_data_dict[pid]['data']})
                 correct_prediction = np.argmax(soft_prediction, axis=3)
-                dices =  utils.numpy_dice_per_class(utils.get_one_hot_prediction(correct_prediction, cf.n_classes), test_data_dict[pid]['seg'])
+                dices =  utils.numpy_volume_dice_per_class(utils.get_one_hot_prediction(correct_prediction, cf.n_classes), test_data_dict[pid]['seg'])
                 pred_dict[pid].append(soft_prediction)
                 logger.info('starting testing...{} {} {}'.format(dices, pid, fold))
                 plot_batch_prediction(test_data_dict[pid], correct_prediction, cf.n_classes,
@@ -150,7 +150,7 @@ def test(folds):
     final_dices = []
     for ix, pid in enumerate(test_data_dict.keys()):
         final_pred = np.argmax(np.mean(np.array(pred_dict[pid]),axis=0),axis=3)
-        avg_dices = utils.numpy_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
+        avg_dices = utils.numpy_volume_dice_per_class(utils.get_one_hot_prediction(final_pred, cf.n_classes), test_data_dict[pid]['seg'])
         final_dices.append(avg_dices)
         logger.info('avg dices... {}'.format(avg_dices))
         np.save(os.path.join(cf.exp_dir, '{}_pred_final.npy'.format(pid)), final_pred)
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
         if not os.path.exists(dir):
             os.mkdir(dir)
-    print "Importance Sampling is disabled!"
+    print "Importance Sampling is disabled!!!!!!!!!!!!!!!!!1"
 
     if mode=='train':
         cf = imp.load_source('cf', 'configs.py')

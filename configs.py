@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'try_ce_nosampling'
+experiment_name = 'batch_dice'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -48,10 +48,10 @@ n_cv_splits = 5
 n_train_batches = 80
 n_val_batches = 20
 batch_size=10
-slice_sample_thresh = 0.2
+slice_sample_thresh = 0.0
 
-learning_rate = 10**(-4) #-3 for wce super high beause loss downweighted.
-loss_name = 'cross_entropy'
+learning_rate = 10**(-3) #-3 for wce super high beause loss downweighted.
+loss_name = 'dice_coefficient'
 class_weights = False
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
