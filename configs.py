@@ -52,6 +52,7 @@ slice_sample_thresh = 0.3
 
 learning_rate = 10**(-4) #-3 for wce super high beause loss downweighted.
 loss_name = 'dice_coefficient'
+class_weights = False
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
 #########################

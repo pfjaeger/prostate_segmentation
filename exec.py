@@ -52,7 +52,10 @@ def train(fold):
             val_dices_running_batch_mean = np.zeros(shape=(1, cf.n_classes))
             for _ in range(cf.n_val_batches):
                 batch = next(batch_gen['val'])
-                cw = utils.get_class_weights(batch['seg'])
+                if cf.class_weights:
+                    cw = utils.get_class_weights(batch['seg'])
+                else:
+                    cw = None
                 val_loss, val_dices = sess.run(
                     (loss, dice_per_class), feed_dict={x: batch['data'],y: batch['seg'], class_weights: cw})
                 val_loss_running_mean += val_loss / cf.n_val_batches
@@ -99,7 +102,7 @@ def train(fold):
             soft_prediction = sess.run((predicter),
                                        feed_dict={x: batch['data'], is_training: False})
             correct_prediction = np.argmax(soft_prediction, axis=3)
-            outfile = cf.plot_dir + '/pred_examle_{}.png'.format(fold)  ## FOLD!
+            outfile = cf.plot_dir + '/pred_example_{}.png'.format(fold)  ## FOLD!
             plot_batch_prediction(batch, correct_prediction, cf.n_classes, outfile)
             epoch += 1
 

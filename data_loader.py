@@ -64,7 +64,7 @@ def create_data_gen_pipeline(patient_data, cf, test_ix=None, do_aug=True):
 
     if test_ix is None:
         data_gen = BatchGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
-                                 PATCH_SIZE=cf.patch_size, slice_sample_thresh=cf.slice_sample_thresh)
+                                 PATCH_SIZE=cf.patch_size, slice_sample_thresh=cf.slice_sample_thresh, do_aug=do_aug)
 
     else:
         data_gen = TestGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
@@ -92,10 +92,11 @@ def create_data_gen_pipeline(patient_data, cf, test_ix=None, do_aug=True):
 
 class BatchGenerator_2D(DataLoaderBase):
 
-    def __init__(self, data, BATCH_SIZE, PATCH_SIZE=(144, 144), n_batches=None, slice_sample_thresh=0.2):
+    def __init__(self, data, BATCH_SIZE, PATCH_SIZE=(144, 144), n_batches=None, slice_sample_thresh=0.2, do_aug=False):
         super(BatchGenerator_2D, self).__init__(data, BATCH_SIZE,  n_batches)
         self.PATCH_SIZE = PATCH_SIZE
         self.slice_sample_thresh = slice_sample_thresh
+        self.do_aug = do_aug
 
     def generate_train_batch(self):
 
@@ -106,16 +107,18 @@ class BatchGenerator_2D(DataLoaderBase):
         for b in range(self.BATCH_SIZE):
             shp = self._data['data'][patients[b]].shape
 
-            #importance sampling
-            is_filled = [1 if np.sum(self._data['seg'][patients[b]][ix]!=0)>0 else 0 for ix in range(shp[0])]
-            filled_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==1]
-            empty_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==0]
-            sample = np.random.uniform()
-            if sample > self.slice_sample_thresh or len(empty_slice_ixs)==0:
-                    slice_ix = np.random.choice(filled_slice_ixs)
+            if self.do_aug:
+                #importance sampling
+                is_filled = [1 if np.sum(self._data['seg'][patients[b]][ix]!=0)>0 else 0 for ix in range(shp[0])]
+                filled_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==1]
+                empty_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==0]
+                sample = np.random.uniform()
+                if sample > self.slice_sample_thresh or len(empty_slice_ixs)==0:
+                        slice_ix = np.random.choice(filled_slice_ixs)
+                else:
+                        slice_ix = np.random.choice(empty_slice_ixs)
             else:
-                    slice_ix = np.random.choice(empty_slice_ixs)
-
+                slice_ix = np.random.choice(range(shp[0]))
             tmp_data = resize_image_by_padding(self._data['data'][patients[b]][slice_ix], (
             max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
             tmp_seg = resize_image_by_padding(self._data['seg'][patients[b]][slice_ix],

@@ -4,7 +4,7 @@ import logging
 import os
 
 
-def _get_loss(logits, y, n_classes, loss_name, class_weights):
+def _get_loss(logits, y, n_classes, loss_name, class_weights=None):
     """
     Constructs the cost function, either cross_entropy, weighted cross_entropy or dice_coefficient.
     Optional arguments are:
