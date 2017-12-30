@@ -22,7 +22,7 @@ def _get_loss(logits, y, n_classes, loss_name, class_weights=None):
         else:
             loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=flat_logits, labels=flat_labels))
     elif loss_name == 'dice_coefficient':
-        loss= 1. - tf.reduce_mean(get_dice_per_class(logits, y))
+        loss= 1. - tf.reduce_mean(get_batch_dice_per_class(logits, y))
 
     return loss
 
