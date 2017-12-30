@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'try_dice_new_init_incl_bg'
+experiment_name = 'try_dice_new_init_lower_lr'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -50,7 +50,7 @@ n_val_batches = 20
 batch_size=10
 slice_sample_thresh = 0.3
 
-learning_rate = 10**(-3)
+learning_rate = 10**(-4) #-3 for wce super high beause loss downweighted.
 loss_name = 'dice_coefficient'
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 

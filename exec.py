@@ -31,7 +31,6 @@ def train(fold):
     dice_per_class = utils.get_dice_per_class(logits, y)
     optimizer = utils._get_optimizer(loss, learning_rate=learning_rate)
     saver = tf.train.Saver()
-
     # set up training
     metrics = {}
     metrics['train'] = {'loss': [0.], 'dices': np.zeros(shape=(1, cf.n_classes))}
@@ -109,7 +108,6 @@ def train(fold):
 def test():
 
     logger = utils.get_logger(cf)
-
     logger.info('intitializing tensorflow graph...')
     tf.reset_default_graph()
     x = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_channels])
@@ -164,10 +162,12 @@ if __name__ == '__main__':
         if not os.path.exists(dir):
             os.mkdir(dir)
 
+    logger = utils.get_logger(cf)
+
     if mode=='train':
+        cf = imp.load_source('cf', 'configs.py')
         shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs.py'))
-        for fold in range(cf.n_cv_splits):
-            train(fold)
+        train(fold)
     elif mode=='test':
         cf = imp.load_source('cf', os.path.join(exp_path, 'configs.py'))
         test()
