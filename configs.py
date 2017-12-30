@@ -6,7 +6,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'try_ce_0.2'
+experiment_name = 'try_ce_nosampling'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)

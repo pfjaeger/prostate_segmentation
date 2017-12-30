@@ -107,7 +107,7 @@ class BatchGenerator_2D(DataLoaderBase):
         for b in range(self.BATCH_SIZE):
             shp = self._data['data'][patients[b]].shape
 
-            if self.do_aug:
+            if self.do_aug and 1==0: #DELETE!
                 #importance sampling
                 is_filled = [1 if np.sum(self._data['seg'][patients[b]][ix]!=0)>0 else 0 for ix in range(shp[0])]
                 filled_slice_ixs = [ix for ix, ii in enumerate(is_filled) if ii==1]

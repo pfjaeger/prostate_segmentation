@@ -23,10 +23,13 @@ def train(fold):
     x = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_channels])
     y = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_classes])
     is_training = tf.placeholder(tf.bool, name='is_training')
-    class_weights = tf.placeholder('float')
     learning_rate = tf.Variable(cf.learning_rate)
     logits, variables = create_UNet(x, features_root=cf.features_root, n_classes=cf.n_classes, is_training=is_training)
-    loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, class_weights)
+    if cf.class_weights:
+        class_weights = tf.placeholder('float')
+        loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, class_weights)
+    else:
+        loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name)
     predicter = tf.nn.softmax(logits)
     dice_per_class = utils.get_dice_per_class(logits, y)
     optimizer = utils._get_optimizer(loss, learning_rate=learning_rate)
@@ -54,10 +57,11 @@ def train(fold):
                 batch = next(batch_gen['val'])
                 if cf.class_weights:
                     cw = utils.get_class_weights(batch['seg'])
+                    feed_dict = {x: batch['data'], y: batch['seg'], class_weights:cw}
                 else:
-                    cw = None
+                    feed_dict = {x: batch['data'], y: batch['seg']}
                 val_loss, val_dices = sess.run(
-                    (loss, dice_per_class), feed_dict={x: batch['data'],y: batch['seg'], class_weights: cw})
+                    (loss, dice_per_class), feed_dict=feed_dict)
                 val_loss_running_mean += val_loss / cf.n_val_batches
                 val_dices_running_batch_mean[0] += val_dices / cf.n_val_batches
 
@@ -69,9 +73,13 @@ def train(fold):
             train_dices_running_batch_mean = np.zeros(shape=(1, cf.n_classes))
             for _ in range(cf.n_train_batches):
                 batch = next(batch_gen['train'])
-                cw = utils.get_class_weights(batch['seg'])
+                if cf.class_weights:
+                    cw = utils.get_class_weights(batch['seg'])
+                    feed_dict = {x: batch['data'], y: batch['seg'], class_weights: cw}
+                else:
+                    feed_dict = {x: batch['data'], y: batch['seg']}
                 train_loss, train_dices, _ = sess.run(
-                    (loss, dice_per_class, optimizer), feed_dict={x: batch['data'], y: batch['seg'], class_weights: cw})
+                    (loss, dice_per_class, optimizer), feed_dict=feed_dict)
                 train_loss_running_mean += train_loss / cf.n_train_batches
                 train_dices_running_batch_mean += train_dices / cf.n_train_batches
 
@@ -164,6 +172,7 @@ if __name__ == '__main__':
     for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
         if not os.path.exists(dir):
             os.mkdir(dir)
+    print "Importance Sampling is disabled!"
 
     if mode=='train':
         cf = imp.load_source('cf', 'configs.py')

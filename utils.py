@@ -11,7 +11,6 @@ def _get_loss(logits, y, n_classes, loss_name, class_weights=None):
     class_weights: weights for the different classes in case of multi-class imbalance
     regularizer: power of the L2 regularizers added to the loss function
     """
-
     if loss_name == 'cross_entropy':
         flat_logits = tf.reshape(logits, [-1, n_classes])
         flat_labels = tf.reshape(y, [-1, n_classes])
