@@ -46,11 +46,11 @@ data_aug_mode = 'train'
 #       Training        #
 #########################
 
-n_epochs = 300
+n_epochs = 500
 features_root = 12
 n_cv_splits = 5
-n_train_batches = 80
-n_val_batches = 20
+n_train_batches = 20
+n_val_batches = 5
 batch_size=2
 slice_sample_thresh = 0.0
 

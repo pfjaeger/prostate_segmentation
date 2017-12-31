@@ -67,6 +67,7 @@ def train(fold):
                     (loss, dice_per_class), feed_dict=feed_dict)
                 val_loss_running_mean += val_loss / cf.n_val_batches
                 val_dices_running_batch_mean[0] += val_dices / cf.n_val_batches
+                print "PROCESSED VAL BATCH"
 
             metrics['val']['loss'].append(val_loss_running_mean)
             metrics['val']['dices'] = np.append(metrics['val']['dices'], val_dices_running_batch_mean, axis=0)
@@ -85,6 +86,7 @@ def train(fold):
                     (loss, dice_per_class, optimizer), feed_dict=feed_dict)
                 train_loss_running_mean += train_loss / cf.n_train_batches
                 train_dices_running_batch_mean += train_dices / cf.n_train_batches
+                print "PROCESSED TRAIN BATCH"
 
             metrics['train']['loss'].append(train_loss_running_mean)
             metrics['train']['dices'] = np.append(metrics['train']['dices'], train_dices_running_batch_mean, axis=0)

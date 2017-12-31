@@ -14,12 +14,10 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, dim=2, n_sele
 	:param prediction: shape b01c
 	:return:
 	"""
-	print "DIM!!!!", dim, prediction.shape
 	if dim==3:
 		seg = np.argmax(batch['seg'][0],axis=3)[:, :, :, np.newaxis]
 		prediction = prediction[0, :, :, :, np.newaxis]
 		data = batch['data'][0]
-		print "CHECK SHAPE", data.shape, seg.shape, prediction.shape
 	else:
 		seg = np.argmax(batch['seg'],axis=3)[:, :, :, np.newaxis]
 		prediction = prediction[:, :, :, np.newaxis]
