@@ -1,18 +1,19 @@
 __author__ = 'Paul F. Jaeger'
 
-__author__ = 'Paul F. Jaeger'
 
-import configs as cf
+
+import configs_3D as cf
 import data_loader
 import utils
 import tensorflow as tf
-from model import create_nice_UNet as create_UNet
+from model import create_3D_UNet as create_UNet
 from plotting import TrainingPlot_2Panel, plot_batch_prediction
 import numpy as np
 import argparse
 import os
 import shutil
 import imp
+
 
 #DISCLAIMER
 
@@ -22,8 +23,8 @@ def train(fold):
     logger = utils.get_logger(cf)
     logger.info('intitializing tensorflow graph...')
     tf.reset_default_graph()
-    x = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_channels])
-    y = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_classes])
+    x = tf.placeholder('float', shape=[cf.batch_size, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_channels])
+    y = tf.placeholder('float', shape=[cf.batch_size, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_classes])
     is_training = tf.placeholder(tf.bool, name='is_training')
     learning_rate = tf.Variable(cf.learning_rate)
     logits, variables = create_UNet(x, features_root=cf.features_root, n_classes=cf.n_classes, is_training=is_training)
@@ -31,9 +32,9 @@ def train(fold):
         class_weights = tf.placeholder('float')
         loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, class_weights)
     else:
-        loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name)
+        loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, cf.dim)
     predicter = tf.nn.softmax(logits)
-    dice_per_class = utils.get_batch_dice_per_class(logits, y)
+    dice_per_class = utils.get_dice_per_class(logits, y, dim=cf.dim)
     optimizer = utils._get_optimizer(loss, learning_rate=learning_rate)
     saver = tf.train.Saver()
     # set up training
@@ -111,9 +112,9 @@ def train(fold):
             batch = next(batch_gen['val'])
             soft_prediction = sess.run((predicter),
                                        feed_dict={x: batch['data'], is_training: False})
-            correct_prediction = np.argmax(soft_prediction, axis=3)
+            correct_prediction = np.argmax(soft_prediction, axis=-1)
             outfile = cf.plot_dir + '/pred_example_{}.png'.format(fold)  ## FOLD!
-            plot_batch_prediction(batch, correct_prediction, cf.n_classes, outfile)
+            plot_batch_prediction(batch, correct_prediction, cf.n_classes, outfile, dim=cf.dim)
             epoch += 1
 
 
@@ -174,10 +175,9 @@ if __name__ == '__main__':
     for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
         if not os.path.exists(dir):
             os.mkdir(dir)
-    print "Importance Sampling is disabled!!!!!!!!!!!!!!!!!1"
 
     if mode=='train':
-        cf = imp.load_source('cf', 'configs.py')
+        cf = imp.load_source('cf', 'configs_3D.py')
         shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs.py'))
         for fold in folds:
             train(fold)

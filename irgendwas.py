@@ -1,16 +1,15 @@
-import numpy as np
-import os
-from batchgenerators.augmentations.utils import resize_image_by_padding, center_crop_2D_image_batched, center_crop_3D_image_batched
-from batchgenerators.dataloading.data_loader import DataLoaderBase
-from batchgenerators.transforms.spatial_transforms import Mirror
-from batchgenerators.transforms.abstract_transforms import Compose
-from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
-from batchgenerators.transforms.spatial_transforms import SpatialTransform
-from batchgenerators.transforms.utility_transforms import TransposeChannels, ConvertSegToOnehotTransform
-from batchgenerators.transforms.crop_and_pad_transforms import CenterCropTransform
-from sklearn.model_selection import KFold
-
-
+# import numpy as np
+# import os
+# from batchgenerators.augmentations.utils import resize_image_by_padding, center_crop_2D_image_batched
+# from batchgenerators.dataloading.data_loader import DataLoaderBase
+# from batchgenerators.transforms.spatial_transforms import Mirror
+# from batchgenerators.transforms.abstract_transforms import Compose
+# from batchgenerators.dataloading.multi_threaded_augmenter import MultiThreadedAugmenter
+# from batchgenerators.transforms.spatial_transforms import SpatialTransform
+# from batchgenerators.transforms.utility_transforms import TransposeChannels, ConvertSegToOnehotTransform
+# from sklearn.model_selection import KFold
+#
+#
 
 
 def get_train_generators(cf, fold):
@@ -40,6 +39,7 @@ def load_NCI_ISBI_dataset(cf, split='train', ids=()):
     data = {}
     data_paths = [os.path.join(in_dir, f) for ix,f in enumerate(os.listdir(in_dir)) if (ix in ids) or len(ids)==0]
     concat_arr = [np.transpose(np.load(ii, mmap_mode='r'), axes=(2, 0, 1, 3)) for ii in data_paths]
+
     #DELTE!!
     # relevant_slices = [np.unique(np.argwhere(arr[:, :, :, 1] != 0)[:, 0]) for arr in concat_arr]
     # concat_arr = [arr[np.min(relevant_slices[ix]): np.max(relevant_slices[ix]), :, :, :] for ix, arr in enumerate(concat_arr)]
@@ -62,41 +62,25 @@ def get_cv_fold_ixs(len_data):
 
 def create_data_gen_pipeline(patient_data, cf, test_ix=None, do_aug=True):
 
-    if cf.dim==2:
-        if test_ix is None:
-            data_gen = BatchGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
-                                     PATCH_SIZE=cf.pad_size, slice_sample_thresh=cf.slice_sample_thresh, do_aug=do_aug)
-
-        else:
-            data_gen = TestGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
-                                     PATCH_SIZE=cf.pad_size, test_ix=test_ix)
+    if test_ix is None:
+        data_gen = BatchGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
+                                 PATCH_SIZE=cf.patch_size, slice_sample_thresh=cf.slice_sample_thresh, do_aug=do_aug)
 
     else:
-        if test_ix is None:
-            data_gen = BatchGenerator_3D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
-                                         PATCH_SIZE=cf.pad_size, slice_sample_thresh=cf.slice_sample_thresh,
-                                         do_aug=do_aug)
-
-        else:
-            data_gen = TestGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
-                                        PATCH_SIZE=cf.pad_size, test_ix=test_ix)
+        data_gen = TestGenerator_2D(patient_data, BATCH_SIZE=cf.batch_size, n_batches=None,
+                                 PATCH_SIZE=cf.patch_size, test_ix=test_ix)
 
     my_transforms = []
     if do_aug:
         mirror_transform = Mirror(axes=(2, 3))
         my_transforms.append(mirror_transform)
-        spatial_transform = SpatialTransform(patch_size=cf.patch_size,
-                                             patch_center_dist_from_border=cf.da_kwargs['rand_crop_dist'],
-                                             do_elastic_deform=cf.da_kwargs['do_elastic_deform'],
-                                             alpha=cf.da_kwargs['alpha'], sigma=cf.da_kwargs['sigma'],
-                                             do_rotation=cf.da_kwargs['do_rotation'], angle_x=cf.da_kwargs['angle_x'],
-                                             angle_y=cf.da_kwargs['angle_y'], angle_z=cf.da_kwargs['angle_z'],
-                                             do_scale=cf.da_kwargs['do_scale'], scale=cf.da_kwargs['scale'],
-                                             random_crop=cf.da_kwargs['random_crop'])
-
+        spatial_transform = SpatialTransform(patch_size=cf.patch_size, patch_center_dist_from_border=False,
+                                             do_elastic_deform=True, alpha=(0., 1500.), sigma=(30., 50.),
+                                             do_rotation=True, angle_z=(0, 2 * np.pi),
+                                             do_scale=True, scale=(0.8, 1.2),
+                                             border_mode_data='constant', border_cval_data=0, order_data=1,
+                                             random_crop=False)
         my_transforms.append(spatial_transform)
-    else:
-        my_transforms.append(CenterCropTransform(crop_size=cf.patch_size))
 
     my_transforms.append(ConvertSegToOnehotTransform(classes=(0, 1, 2)))
     my_transforms.append(TransposeChannels())
@@ -171,48 +155,3 @@ class TestGenerator_2D(DataLoaderBase):
                 pids.append(self._data['pid'][self.test_ix])
             return {'data': np.array(data).astype('float32'), 'seg': np.array(seg).astype('float32'), 'pid': pids}
 
-
-
-class BatchGenerator_3D(DataLoaderBase):
-
-    def __init__(self, data, BATCH_SIZE, PATCH_SIZE=(144, 144, 32), n_batches=None, slice_sample_thresh=0.2, do_aug=False):
-        super(BatchGenerator_3D, self).__init__(data, BATCH_SIZE,  n_batches)
-        self.PATCH_SIZE = PATCH_SIZE
-        self.slice_sample_thresh = slice_sample_thresh
-        self.do_aug = do_aug
-
-    def generate_train_batch(self):
-
-        patients = np.random.choice(range(len(self._data['pid'])), self.BATCH_SIZE, replace=True)
-        data = []
-        seg = []
-        pids = []
-        for b in range(self.BATCH_SIZE):
-            shp = self._data['data'][patients[b]].shape
-
-            tmp_data = resize_image_by_padding(self._data['data'][patients[b]], (
-            max(shp[0], self.PATCH_SIZE[2]), max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])), pad_value=0)
-            tmp_seg = resize_image_by_padding(self._data['seg'][patients[b]],
-                                              (max(shp[0], self.PATCH_SIZE[2]), max(shp[1], self.PATCH_SIZE[0]), max(shp[2], self.PATCH_SIZE[1])),
-                                              pad_value=0)
-            # bring to x,y,z + add channel in front + get batch from append
-            data.append(center_crop_3D_image_batched(np.transpose(tmp_data, axes=(1, 2, 0))[np.newaxis, np.newaxis, :, :, :], self.PATCH_SIZE)[0])
-            seg.append(center_crop_3D_image_batched(np.transpose(tmp_seg, axes=(1, 2, 0))[np.newaxis, np.newaxis, :, :, :], self.PATCH_SIZE)[0])
-            pids.append(self._data['pid'][patients[b]])
-        return {'data': np.array(data).astype('float32'), 'seg': np.array(seg).astype('float32'), 'pid': pids}
-
-
-
-if __name__ == '__main__':
-
-    import configs_3D as cf
-    import plotting
-    print cf.patch_size
-    batch_gen = get_train_generators(cf, fold=0)
-    vbatch = next(batch_gen['val'])
-    tbatch = next(batch_gen['train'])
-    print vbatch['data'].shape
-    print vbatch['seg'].shape
-    print tbatch['data'].shape
-    print tbatch['seg'].shape
-    plotting.plot_batch_gen_example(next(batch_gen['val']), cf=cf, dim=cf.dim)

@@ -1,12 +1,14 @@
 __author__ = 'Paul F. Jaeger'
 
+__author__ = 'Paul F. Jaeger'
+
 import os
 
 #########################
 #     IO Handling    #
 #########################
 
-experiment_name = 'batch_dice'
+experiment_name = 'try_3D'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -31,8 +33,8 @@ n_classes=3
 #########################
 
 seed=42
-pad_size=(288, 288)
-patch_size=(288, 288)
+pad_size = (320, 320, 32)
+patch_size=(288, 288, 32)
 dim = len(patch_size)
 n_workers = 10
 n_cached = 10
@@ -45,11 +47,11 @@ data_aug_mode = 'train'
 #########################
 
 n_epochs = 300
-features_root = 32
+features_root = 12
 n_cv_splits = 5
 n_train_batches = 80
 n_val_batches = 20
-batch_size=10
+batch_size=2
 slice_sample_thresh = 0.0
 
 learning_rate = 10**(-3) #-3 for wce super high beause loss downweighted.
@@ -57,20 +59,19 @@ loss_name = 'dice_coefficient'
 class_weights = False
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
-
 #########################
 #   Data Augmentation   #
 #########################
 
 da_kwargs={
-'rand_crop_dist': (pad_size[0]/2-10,pad_size[1]/2-10),
+'rand_crop_dist': (pad_size[0]/2.-5,pad_size[1]/2.-5,pad_size[2]/2.-2),
 'do_elastic_deform': True,
 'alpha':(0., 1500.),
 'sigma':(30., 50.), #140 for 2d (288),
 'do_rotation':True,
-'angle_x': (0., 2* 3.14),
-'angle_y': (0., 2* 3.14),
-'angle_z': (0., 2* 3.14),
+'angle_y':(0., 0.05),
+'angle_x':(0., 0.05),
+'angle_z':(0., 2*3.14), #for 3D only z angle!
 'do_scale':True,
 'scale':(0.7, 1.3),
 'random_crop':True}

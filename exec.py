@@ -1,5 +1,6 @@
 __author__ = 'Paul F. Jaeger'
 
+
 import configs as cf
 import data_loader
 import utils
@@ -11,6 +12,7 @@ import argparse
 import os
 import shutil
 import imp
+
 
 #DISCLAIMER
 

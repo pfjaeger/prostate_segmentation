@@ -6,7 +6,7 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 
 
-def plot_batch_prediction(batch, prediction, num_classes, outfile, n_select_from_batch=None):
+def plot_batch_prediction(batch, prediction, num_classes, outfile, dim=2, n_select_from_batch=None):
 	"""
 	plot the predictions of a batch
 	:param data: shape b01c
@@ -14,10 +14,16 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, n_select_from
 	:param prediction: shape b01c
 	:return:
 	"""
-
-	seg = np.argmax(batch['seg'],axis=3)[:, :, :, np.newaxis]
-	prediction = prediction[:, :, :, np.newaxis]
-	data = batch['data']
+	print "DIM!!!!", dim, prediction.shape
+	if dim==3:
+		seg = np.argmax(batch['seg'][0],axis=3)[:, :, :, np.newaxis]
+		prediction = prediction[0, :, :, :, np.newaxis]
+		data = batch['data'][0]
+		print "CHECK SHAPE", data.shape, seg.shape, prediction.shape
+	else:
+		seg = np.argmax(batch['seg'],axis=3)[:, :, :, np.newaxis]
+		prediction = prediction[:, :, :, np.newaxis]
+		data = batch['data']
 
 	try:
 		# all dimensions except for the 'channel-dimension' are required to match
@@ -49,9 +55,6 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, n_select_from
 
 			axarr[m, b].axis('off')
 			axarr[m, b].imshow(show_arrays[b, :, :, m], cmap=cmap, vmin=vmin, vmax=vmax)
-
-			if m ==0:
-				plt.title(batch['pid'][b])
 
 	plt.savefig(outfile)
 	plt.close(fig)
@@ -170,20 +173,25 @@ def plot_loss_and_dice(ax, ax2, metrics, best_metrics, experiment_name, class_di
 
 
 
-def plot_batch_gen_example(batch):
+def plot_batch_gen_example(batch, cf, dim=2):
 
-	import matplotlib.pyplot as plt
-	f, axarr = plt.subplots(2, batch['data'].shape[0])
-	f.set_figheight(10)
-	f.set_figwidth(15)
+	if dim==3:
+		img = batch['data'][0]
+		seg = np.argmax(batch['seg'][0], axis=3)
+	else:
+		img = batch['data']
+		seg = np.argmax(batch['seg'], axis=3)
+	fig, axarr = plt.subplots(2, img.shape[0])
+	fig.set_figheight(6)
+	fig.set_figwidth(img.shape[0]*2.5)
 	for b in range(axarr.shape[1]):
-		axarr[0, b].set_title(batch['patient_ids'][b] + str(batch['class_target'][b]))
-		axarr[0, b].imshow(batch['data'][b, :, :, 1], cmap='Greys')
+		# axarr[0, b].set_title(batch['patient_ids'][b] + str(batch['class_target'][b]))
+		axarr[0, b].imshow(img[b, :, :, 0], cmap='gray')
 		axarr[0, b].axis('off')
-		axarr[1, b].imshow(batch['seg'][b, :, :, 0], alpha=0.7)
+		axarr[1, b].imshow(seg[b, :, :])
 		# axarr[1, b].imshow(batch['data'][b, :, :, 1], alpha=0.3, cmap='Greys')
 		axarr[1, b].axis('off')
 
 	# plt.tight_layout()
-	# plt.savefig('/home/paul/Phd/batch.png')
-	plt.show()
+	plt.savefig(cf.plot_dir + '/batch_example.png')
+	plt.close(fig)
