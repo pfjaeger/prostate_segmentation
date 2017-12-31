@@ -8,7 +8,7 @@ import os
 #     IO Handling    #
 #########################
 
-experiment_name = 'try_3D'
+experiment_name = 'try_3D_batch_none'
 
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
 exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name)
@@ -35,7 +35,7 @@ n_classes=3
 seed=42
 pad_size = (320, 320, 32)
 patch_size=(288, 288, 32)
-dim = len(patch_size)
+dim = 3
 n_workers = 10
 n_cached = 10
 worker_seeds=[123, 1234, 12345, 123456, 1234567, 12345678, 7, 8, 9, 10]
@@ -55,8 +55,8 @@ batch_size=2
 slice_sample_thresh = 0.0
 
 learning_rate = 10**(-3) #-3 for wce super high beause loss downweighted.
-loss_name = 'dice_coefficient'
-class_weights = False
+loss_name = 'cross_entropy'
+class_weights = True
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
 #########################

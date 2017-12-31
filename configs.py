@@ -31,9 +31,9 @@ n_classes=3
 #########################
 
 seed=42
-pad_size=(288, 288)
-patch_size=(288, 288)
-dim = len(patch_size)
+pad_size=(320, 320, 32)
+patch_size=(288, 288, 32)
+dim = 2
 n_workers = 10
 n_cached = 10
 worker_seeds=[123, 1234, 12345, 123456, 1234567, 12345678, 7, 8, 9, 10]

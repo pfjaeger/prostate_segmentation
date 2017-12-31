@@ -1,8 +1,6 @@
 __author__ = 'Paul F. Jaeger'
 
-
-
-import configs_3D as cf
+import configs_3D as configs
 import data_loader
 import utils
 import tensorflow as tf
@@ -20,11 +18,16 @@ import imp
 
 def train(fold):
 
+    for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+    shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs_3D.py'))
+
     logger = utils.get_logger(cf)
     logger.info('intitializing tensorflow graph...')
     tf.reset_default_graph()
-    x = tf.placeholder('float', shape=[cf.batch_size, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_channels])
-    y = tf.placeholder('float', shape=[cf.batch_size, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_classes])
+    x = tf.placeholder('float', shape=[None, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_channels])
+    y = tf.placeholder('float', shape=[None, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_classes])
     is_training = tf.placeholder(tf.bool, name='is_training')
     learning_rate = tf.Variable(cf.learning_rate)
     logits, variables = create_UNet(x, features_root=cf.features_root, n_classes=cf.n_classes, is_training=is_training)
@@ -60,6 +63,7 @@ def train(fold):
                 batch = next(batch_gen['val'])
                 if cf.class_weights:
                     cw = utils.get_class_weights(batch['seg'])
+                    print "WEIGHTS", cw.shape, cw
                     feed_dict = {x: batch['data'], y: batch['seg'], class_weights:cw}
                 else:
                     feed_dict = {x: batch['data'], y: batch['seg']}
@@ -67,7 +71,7 @@ def train(fold):
                     (loss, dice_per_class), feed_dict=feed_dict)
                 val_loss_running_mean += val_loss / cf.n_val_batches
                 val_dices_running_batch_mean[0] += val_dices / cf.n_val_batches
-                print "PROCESSED VAL BATCH"
+                print "PROCESSED VAL BATCH", val_loss
 
             metrics['val']['loss'].append(val_loss_running_mean)
             metrics['val']['dices'] = np.append(metrics['val']['dices'], val_dices_running_batch_mean, axis=0)
@@ -79,6 +83,7 @@ def train(fold):
                 batch = next(batch_gen['train'])
                 if cf.class_weights:
                     cw = utils.get_class_weights(batch['seg'])
+                    print "WEIGHTS", cw.shape, cw
                     feed_dict = {x: batch['data'], y: batch['seg'], class_weights: cw}
                 else:
                     feed_dict = {x: batch['data'], y: batch['seg']}
@@ -86,7 +91,7 @@ def train(fold):
                     (loss, dice_per_class, optimizer), feed_dict=feed_dict)
                 train_loss_running_mean += train_loss / cf.n_train_batches
                 train_dices_running_batch_mean += train_dices / cf.n_train_batches
-                print "PROCESSED TRAIN BATCH"
+                print "PROCESSED TRAIN BATCH", train_loss
 
             metrics['train']['loss'].append(train_loss_running_mean)
             metrics['train']['dices'] = np.append(metrics['train']['dices'], train_dices_running_batch_mean, axis=0)
@@ -126,7 +131,7 @@ def test(folds):
     logger = utils.get_logger(cf)
     logger.info('intitializing tensorflow graph...')
     tf.reset_default_graph()
-    x = tf.placeholder('float', shape=[None, cf.patch_size[0], cf.patch_size[0], cf.n_channels])
+    x = tf.placeholder('float', shape=[cf.batch_size, cf.patch_size[2], cf.patch_size[0], cf.patch_size[1], cf.n_channels])
     logits, variables = create_UNet(x, features_root=cf.features_root, n_classes=cf.n_classes, is_training=False)
     predicter = tf.nn.softmax(logits)
     saver = tf.train.Saver()
@@ -143,7 +148,7 @@ def test(folds):
             saver.restore(sess, os.path.join(cf.exp_dir, 'params_{}'.format(fold)))
 
             for ix, pid in enumerate(test_data_dict.keys()):
-                soft_prediction = sess.run(predicter, feed_dict={x: test_data_dict[pid]['data']})
+                soft_prediction = sess.run(predicter, feed_dict={x: test_data_dict[pid]['data']})[0]
                 correct_prediction = np.argmax(soft_prediction, axis=3)
                 dices =  utils.numpy_volume_dice_per_class(utils.get_one_hot_prediction(correct_prediction, cf.n_classes), test_data_dict[pid]['seg'])
                 pred_dict[pid].append(soft_prediction)
@@ -174,17 +179,13 @@ if __name__ == '__main__':
     mode = parser.parse_args().mode
     folds = parser.parse_args().folds
     exp_path = parser.parse_args().exp
-    for dir in [cf.exp_dir, cf.test_dir, cf.plot_dir]:
-        if not os.path.exists(dir):
-            os.mkdir(dir)
 
     if mode=='train':
         cf = imp.load_source('cf', 'configs_3D.py')
-        shutil.copy(cf.__file__, os.path.join(cf.exp_dir, 'configs.py'))
         for fold in folds:
             train(fold)
     elif mode=='test':
-        cf = imp.load_source('cf', os.path.join(exp_path, 'configs.py'))
+        cf = imp.load_source('cf', os.path.join(exp_path, 'configs_3D.py')) #merge configs with if dim for sure.
         test(folds)
     else:
         print 'specified wrong execution mode in args...'

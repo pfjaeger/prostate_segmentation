@@ -89,15 +89,15 @@ def numpy_volume_dice_per_class(prediction, y):
 	return dice_per_class
 
 
-def get_class_weights(seg):
+def get_class_weights(seg, margin=0.1):
 	"""
 	get class weight values for a vector of pixels with sh....
 	return weight vect...
 	"""
-	margin = 0.1 # avoid 0 loss in empty slices.
 	spatial_axes = tuple(range(1, len(seg.shape)-1))
 	class_counts = np.sum(seg, axis=spatial_axes)
-	class_weights = 1 - (class_counts / float(seg.shape[1] ** len(spatial_axes))) + margin
+	spatial_counts = np.prod(np.array([seg.shape[ix] for ix in spatial_axes]))
+	class_weights = 1 - (class_counts / float(spatial_counts)) + margin		 ###types???
 	class_weights_flat = np.repeat(class_weights, seg.shape[1] ** len(spatial_axes), axis=0)
 	return class_weights_flat
 
@@ -106,9 +106,9 @@ def get_one_hot_prediction(pred, n_classes):
 	"""
 	transform a softmax prediction to a one-hot prediction of the same shape
 	"""
-	shp = pred.shape
-	shp[-1] = n_classes
-	pred_one_hot = np.zeros(shp).astype('int32')
+	print pred.shape, "CHECK SHAPE"
+	pred_one_hot = np.zeros(list(pred.shape) + [n_classes]).astype('int32')
+	print pred_one_hot.shape, "CHECK SHAPE"
 	for cl in range(n_classes):
 		pred_one_hot[..., cl][pred == cl] = 1
 	return pred_one_hot

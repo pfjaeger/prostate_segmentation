@@ -227,7 +227,7 @@ def create_3D_UNet(x, features_root=16, n_classes=2, is_training=True):
 
         net['encode/conv2_1'] = instance_norm(slim.conv3d(net['encode/pool1'], features_root*2, [3, 3, 3]))
         net['encode/conv2_2'] = instance_norm(slim.conv3d(net['encode/conv2_1'], features_root*2, [3, 3, 3]))
-        net['encode/pool2'] = slim.max_pool3d(net['encode/conv2_2'], [2, 2, 2])
+        net['encode/pool2'] = slim.max_pool3d(net['encode/conv2_2'], kernel_size=[2, 2, 2], stride=[2,2,2])
 
         net['encode/conv3_1'] = instance_norm(slim.conv3d(net['encode/pool2'], features_root*4, [3, 3, 3]))
         net['encode/conv3_2'] = instance_norm(slim.conv3d(net['encode/conv3_1'], features_root*4, [3, 3, 3]))
@@ -241,28 +241,28 @@ def create_3D_UNet(x, features_root=16, n_classes=2, is_training=True):
         net['encode/conv5_2'] = instance_norm(slim.conv3d(net['encode/conv5_1'], features_root*16, [3, 3, 3]))
 
         net['decode/up_conv1'] = slim.conv3d_transpose(net['encode/conv5_2'], features_root * 8, [2, 2, 2],
-                                                       stride=2, activation_fn=None, padding='VALID')
+                                                       stride=2, activation_fn=None, padding='VALID', biases_initializer=None)
         net['decode/concat_c4_u1'] = tf.concat([net['encode/conv4_2'], net['decode/up_conv1']], 4)
         net['decode/conv1_1'] = instance_norm(slim.conv3d(net['decode/concat_c4_u1'], features_root * 8, [3, 3, 3]))
         net['decode/conv1_2'] = instance_norm(slim.conv3d(net['decode/conv1_1'], features_root * 8, [3, 3, 3]))
 
 
         net['decode/up_conv2'] = slim.conv3d_transpose(net['decode/conv1_2'], features_root * 4, [2, 2, 2],
-                                                       stride=2, activation_fn=None, padding='VALID')
+                                                       stride=2, activation_fn=None, padding='VALID', biases_initializer=None)
 
 
         net['decode/concat_c3_u2'] = tf.concat([net['encode/conv3_2'], net['decode/up_conv2']], 4)
         net['decode/conv2_1'] = instance_norm(slim.conv3d(net['decode/concat_c3_u2'], features_root * 4, [3, 3, 3]))
         net['decode/conv2_2'] = instance_norm(slim.conv3d(net['decode/conv2_1'], features_root * 4, [3, 3, 3]))
 
-        net['decode/up_conv3'] = slim.conv3d_transpose(net['decode/conv2_2'], features_root * 2,  [2, 2, 2],
-                                                       stride=2, activation_fn=None, padding='VALID')
+        net['decode/up_conv3'] = slim.conv3d_transpose(net['decode/conv2_2'], features_root * 2, kernel_size=[2, 2, 2], stride=[2,2,2],
+                                                       activation_fn=None, padding='VALID', biases_initializer=None)
         net['decode/concat_c2_u3'] = tf.concat([net['encode/conv2_2'], net['decode/up_conv3']], 4)
         net['decode/conv3_1'] = instance_norm(slim.conv3d(net['decode/concat_c2_u3'], features_root * 2, [3, 3, 3]))
         net['decode/conv3_2'] = instance_norm(slim.conv3d(net['decode/conv3_1'], features_root * 2, [3, 3, 3]))
 
         net['decode/up_conv4'] = slim.conv3d_transpose(net['decode/conv3_2'], features_root,  [1, 2, 2],
-                                                       stride=[1, 2, 2], activation_fn=None, padding='VALID')
+                                                       stride=[1, 2, 2], activation_fn=None, padding='VALID', biases_initializer=None)
 
         net['decode/concat_c1_u4'] = tf.concat([net['encode/conv1_2'], net['decode/up_conv4']], 4)
         net['decode/conv4_1'] = instance_norm(slim.conv3d(net['decode/concat_c1_u4'], features_root, [3, 3, 3]))

@@ -142,6 +142,7 @@ def test(folds):
             for ix, pid in enumerate(test_data_dict.keys()):
                 soft_prediction = sess.run(predicter, feed_dict={x: test_data_dict[pid]['data']})
                 correct_prediction = np.argmax(soft_prediction, axis=3)
+                print "CORRRECT SHAPE" , correct_prediction.shape
                 dices =  utils.numpy_volume_dice_per_class(utils.get_one_hot_prediction(correct_prediction, cf.n_classes), test_data_dict[pid]['seg'])
                 pred_dict[pid].append(soft_prediction)
                 logger.info('starting testing...{} {} {}'.format(dices, pid, fold))
