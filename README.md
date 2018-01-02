@@ -2,6 +2,7 @@
 CG and PZ Prostate segementation on T2-weighted MR images.
 
 ## How to use it
+Download the Data set from https://wiki.cancerimagingarchive.net/display/DOI/NCI-ISBI+2013+Challenge%3A+Automated+Segmentation+of+Prostate+Structures
 Specify local data paths and in config.py
 ```
 python preprocessing.py
