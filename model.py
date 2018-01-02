@@ -1,28 +1,36 @@
 __author__ = 'Paul F. Jaeger'
 
 import tensorflow as tf
-from collections import OrderedDict
 import tensorflow.contrib.slim as slim
+from collections import OrderedDict
 from tensorflow.contrib.layers import instance_norm
 from tensorflow.contrib.layers.python.layers import initializers
 
 
+def create_UNet(x, features_root, n_classes, dim, logger):
 
-def create_UNet(x, features_root, n_classes, dim):
+    if dim == 2:
+        net, variables = create_2D_UNet(x, features_root, n_classes)
+    elif dim == 3:
+        net, variables = create_3D_UNet(x, features_root, n_classes)
+    else:
+        raise ValueError("wrong dimension selected in configs.")
 
-    if dim ==2:
-        return create_2D_UNet(x, features_root, n_classes)
-    elif dim==3:
-        return create_3D_UNet(x, features_root, n_classes)
+    for i, c in net.iteritems():
+        print(i, c.get_shape().as_list())
+
+    return net, variables
 
 
 def leaky_relu(x):
+    """
+    from https://github.com/NifTK/NiftyNet/blob/dev/niftynet/layer/activation.py
+    """
     half_alpha = 0.01
     return (0.5 + half_alpha) * x + (0.5 - half_alpha) * abs(x)
 
 
 def create_2D_UNet(x, features_root, n_classes):
-
 
     net = OrderedDict()
     with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
@@ -74,15 +82,10 @@ def create_2D_UNet(x, features_root, n_classes):
 
         net['out_map'] = instance_norm(slim.conv2d(net['decode/conv4_2'], n_classes, [1, 1], activation_fn=None))
 
-    for i, c in net.iteritems():
-        print(i, c.get_shape().as_list())
-
     return net['out_map'], tf.global_variables()
 
 
-
 def create_3D_UNet(x, features_root=16, n_classes=2):
-
 
     net = OrderedDict()
     with slim.arg_scope([slim.conv3d, slim.conv3d_transpose],
@@ -137,8 +140,5 @@ def create_3D_UNet(x, features_root=16, n_classes=2):
         net['decode/conv4_2'] = instance_norm(slim.conv3d(net['decode/conv4_1'], features_root, [3, 3, 3]))
 
         net['out_map'] = instance_norm(slim.conv3d(net['decode/conv4_2'], n_classes, [1, 1, 1], activation_fn=None))
-
-    for i, c in net.iteritems():
-        print(i, c.get_shape().as_list())
 
     return net['out_map'], tf.global_variables()
