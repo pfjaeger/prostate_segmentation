@@ -6,33 +6,32 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 
 
-def plot_batch_prediction(batch, prediction, num_classes, outfile, dim=2, n_select_from_batch=None):
+def plot_batch_prediction(img, seg, prediction, num_classes, outfile, dim=2, n_select_from_batch=None):
     """
-    plot the predictions of a batch
-    :param data: shape b01c
-    :param seg: shape b01c
-    :param prediction: shape b01c
-    :return:
+    plot the input image + ground truth segmentation + predictions for one batch
+    :param img: shape [b, x, y, ch] (2D) / [b, z, x, y, ch] (3D)
+    :param seg: shape [b, x, y, n_classes] (2D) / [b, z, x, y, n_classes] (3D)
+    :param prediction: [b, x, y] (2D) / [b, z, x, y] (3D)
     """
-    if dim==3:
-        seg = np.argmax(batch['seg'][0],axis=3)[:, :, :, np.newaxis]
+    if dim == 3:
+        seg = np.argmax(seg[0],axis=3)[:, :, :, np.newaxis]
         prediction = prediction[0, :, :, :, np.newaxis]
-        data = batch['data'][0]
+        img = img[0]
     else:
-        seg = np.argmax(batch['seg'],axis=3)[:, :, :, np.newaxis]
+        seg = np.argmax(seg, axis=3)[:, :, :, np.newaxis]
         prediction = prediction[:, :, :, np.newaxis]
-        data = batch['data']
+
 
     try:
         # all dimensions except for the 'channel-dimension' are required to match
         for i in [0, 1, 2]:
-            assert data.shape[i] == seg.shape[i] == prediction.shape[i]
+            assert img.shape[i] == seg.shape[i] == prediction.shape[i]
     except:
         raise Warning('Shapes of arrays to plot not in agreement! Shapes {} vs. {} vs {}'.format(data.shape,
                                                                                                  seg.shape,
                                                                                              prediction.shape))
 
-    show_arrays = np.concatenate([data, seg, prediction], axis=3)[:n_select_from_batch]
+    show_arrays = np.concatenate([img, seg, prediction], axis=3)[:n_select_from_batch]
     fig, axarr = plt.subplots(show_arrays.shape[3], show_arrays.shape[0])
     fig.set_figwidth(2.5 * show_arrays.shape[0])
     fig.set_figheight(2.5 * show_arrays.shape[3])
@@ -40,7 +39,7 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, dim=2, n_sele
     for b in range(show_arrays.shape[0]):
         for m in range(show_arrays.shape[3]):
 
-            if m < data.shape[3]:
+            if m < img.shape[3]:
                 cmap = 'gray'
                 vmin = None
                 vmax = None
@@ -96,13 +95,6 @@ class TrainingPlot_2Panel():
 def plot_loss_and_dice(ax, ax2, metrics, best_metrics, experiment_name, class_dict=None):
     """
     monitor the training process in terms of the loss and dice values of the individual classes
-    :param ax:
-    :param ax2:
-    :param metrics: a dict of the training metrics, use AbstractSegmentationNet's property
-    :param best_metrics: a dict of the best metrics, use UNet_2D_Trainer's property
-    :param experiment_name:
-    :param class_dict: a dict that specifies the mapping between classes and their names
-    :return:
     """
     num_epochs = len(metrics['val']['loss'])
     epochs = range(num_epochs)
@@ -164,7 +156,9 @@ def plot_loss_and_dice(ax, ax2, metrics, best_metrics, experiment_name, class_di
 
 
 def plot_batch_gen_example(batch, cf, dim=2):
-
+    """
+    test the data generators by plotting example batches
+    """
     if dim==3:
         img = batch['data'][0]
         seg = np.argmax(batch['seg'][0], axis=3)

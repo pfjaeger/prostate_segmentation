@@ -4,6 +4,8 @@ import numpy as np
 import os
 from sklearn.model_selection import KFold
 from collections import OrderedDict
+
+# batch generator tools from https://github.com/MIC-DKFZ/batchgenerators
 from batchgenerators.augmentations.utils import resize_image_by_padding, center_crop_2D_image, center_crop_3D_image
 from batchgenerators.dataloading.data_loader import DataLoaderBase
 from batchgenerators.transforms.spatial_transforms import Mirror
@@ -14,10 +16,13 @@ from batchgenerators.transforms.utility_transforms import TransposeChannels, Con
 from batchgenerators.transforms.crop_and_pad_transforms import CenterCropTransform
 
 
-def get_train_generators(cf, fold):
 
-    train_val_data = load_dataset(cf)
-    fg = get_cv_fold_ixs(len_data=len(train_val_data), seed=cf.seed)
+def get_train_generators(cf, fold):
+    """
+    wrapper function for creating the training batch generator pipeline. returns the train/val generators
+    """
+    train_val_data = load_dataset(cf.pp_data_dir, split='train')
+    fg = get_cv_fold_ixs(len_data=len(train_val_data), seed=cf.seed, n_cv_splits=cf.n_cv_splits)
     train_ix, val_ix = fg[fold]
     train_data = {k: v for ix, (k, v) in enumerate(train_val_data.iteritems()) if any(ix == s for s in train_ix)}
     val_data = {k: v for ix, (k, v) in enumerate(train_val_data.iteritems()) if any(ix == s for s in val_ix)}
@@ -28,8 +33,11 @@ def get_train_generators(cf, fold):
 
 
 def get_test_generator(cf):
-
-    test_data = load_dataset(cf, split='test')
+    """
+    wrapper function for creating the test data generator pipeline. returns a dictionary containing
+    one dictionary ({'data', 'seg', 'pid'}) per test patient
+    """
+    test_data = load_dataset(cf.pp_data_dir, split='test')
     test_data_dict = {}
     test_gen = create_data_gen_pipeline(test_data, cf=cf, test_pids=test_data.keys(), do_aug=False)
     for pid in test_data.keys():
@@ -37,29 +45,45 @@ def get_test_generator(cf):
     return test_data_dict
 
 
-def load_dataset(cf, split='train', ids=()):
-
-    in_dir = os.path.join(cf.root_dir, split)
-    data_paths = [os.path.join(in_dir, f) for ix,f in enumerate(os.listdir(in_dir)) if (ix in ids) or len(ids)==0]
-    concat_arr = [np.load(ii, mmap_mode='r') for ii in data_paths]
+def load_dataset(root_dir, split):
+    """
+    load the data set numpy arrays saved by the preprocessing script
+    :param root_dir: path to input data
+    :param split: defines whether to load the training or test set
+    :return: data: dictionary containing one dictionary ({'data', 'seg', 'pid'}) per patient
+    """
+    in_dir = os.path.join(root_dir, split)
+    data_paths = [os.path.join(in_dir, f) for f in os.listdir(in_dir)]
+    data_and_seg_arr = [np.load(ii, mmap_mode='r') for ii in data_paths]
     pids = [ii.split('/')[-1].split('.')[0] for ii in data_paths]
     data = OrderedDict()
     for ix, pid in enumerate(pids):
-        data[pid] = {'data': concat_arr[ix][..., 0], 'seg': concat_arr[ix][..., 1], 'pid': pid}
+        data[pid] = {'data': data_and_seg_arr[ix][..., 0], 'seg': data_and_seg_arr[ix][..., 1], 'pid': pid}
     return data
 
 
-def get_cv_fold_ixs(len_data, seed):
-
+def get_cv_fold_ixs(len_data, seed, n_cv_splits):
+    """
+    split the data into training and validation set per fold for cross-validation
+    :param len_data: length of the data to be split
+    :param seed: seed the split generator
+    :return: fold_list: list of length n_cv_splits containing train/val ixs for each fold
+    """
     fold_list = []
-    kf = KFold(n_splits=5, random_state=seed, shuffle=True,)
+    kf = KFold(n_splits=n_cv_splits, random_state=seed, shuffle=True,)
     for train_index, val_index in kf.split(range(len_data)):
         fold_list.append([train_index, val_index])
     return fold_list
 
 
 def create_data_gen_pipeline(patient_data, cf, test_pids=None, do_aug=True):
-
+    """
+    create mutli-threaded train/val/test batch generation and augmentation pipeline.
+    :param patient_data: dictionary containing one dictionary per patient in the train/test subset
+    :param test_pids: (optional) list of test patient ids, calls the test generator.
+    :param do_aug: (optional) whether to perform data augmentation (training) or not (validation/testing)
+    :return: multithreaded_generator
+    """
     if test_pids is None:
         data_gen = BatchGenerator(patient_data, batch_size=cf.batch_size,
                                  pre_crop_size=cf.pre_crop_size, dim=cf.dim)
@@ -93,7 +117,14 @@ def create_data_gen_pipeline(patient_data, cf, test_pids=None, do_aug=True):
 
 
 class BatchGenerator(DataLoaderBase):
-
+    """
+    create the training/validation batch generator. Randomly sample n_batch_size patients
+    from the data set, (draw a random slice if 2D), pad-crop them to equal sizes and merge to an array.
+    :param data: data dictionary as provided by 'load_dataset'
+    :param batch_size: number of patients to sample for the batch
+    :param pre_crop_size: equal size for merging the patients to a single array (before the final random-crop in data aug.)
+    :return dictionary containing the batch data / seg / pids
+    """
     def __init__(self, data, batch_size, pre_crop_size, n_batches=None, dim=2):
         super(BatchGenerator, self).__init__(data, batch_size,  n_batches)
         self.pre_crop_size = pre_crop_size
@@ -130,6 +161,12 @@ class BatchGenerator(DataLoaderBase):
 
 
 class TestGenerator(DataLoaderBase):
+    """
+    create the test generator. Step through the test dataset and return dictionaries per patient. For simplicity,
+    test data is very conservatively padded and cropped, to be processed by the network. This could be improved by only
+    padding each patient individually to the next highest processable size and crop the prediction
+    back to the original image size afterwards.
+    """
 
     def __init__(self, data, batch_size, pre_crop_size, test_pids, n_batches=None, dim=2):
         super(TestGenerator, self).__init__(data, batch_size,  n_batches)
@@ -164,9 +201,7 @@ class TestGenerator(DataLoaderBase):
             data_arr = data_arr[np.newaxis]
             seg_arr = seg_arr[np.newaxis]
 
-
         self.patient_ix += 1
-
         return {'data': data_arr.astype('float32'), 'seg': seg_arr.astype('float32'), 'pid': pid}
 
 

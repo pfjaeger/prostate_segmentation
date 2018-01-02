@@ -11,14 +11,15 @@ import os
 experiment_name = 'test_review'
 
 # input and output directory paths
-root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
-exp_dir='/mnt/hdd/experiments/segmentation/{}'.format(experiment_name) # DO JOIN HERE
+raw_data_dir =  '/mnt/hdd/data/dm/'
+pp_data_dir = os.path.join(raw_data_dir, 'preprocessed_data')
+exp_dir= os.path.join('/mnt/hdd/experiments/segmentation', experiment_name)
 test_dir = os.path.join(exp_dir, 'test_files')
 plot_dir = os.path.join(exp_dir, 'plots')
 
 
 # data dimensions
-dim = 2
+dim = 3
 n_channels = 1
 n_classes = 3
 
@@ -32,12 +33,18 @@ n_workers = 10
 n_cv_splits = 5
 n_epochs = 300
 learning_rate = 10**(-3)
-loss_name = 'dice_coefficient'   # either one of 'cross_entropy', 'weighted_cross_entropy', or 'dice_coefficient'
 
-# set class names for monitoring plot
+# the loss function to be used: either one of 'cross_entropy', 'weighted_cross_entropy', or 'dice_coefficient'
+loss_name = 'weighted_cross_entropy' #'dice_coefficient'
+
+#taken from preprocessing.py . weights are 1 minus averaged class occurance averaged over patients in the training set
+class_weights = [0.0178, 0.994, 0.988]
+
+# class names for monitoring plot. additional FG (foreground) class is
+# the average of the two foreground classes and monitored as selection criterion.
 class_dict = {0:'bkgd', 1:'PZ', 2: 'CG', 3: 'FG'}
 
-# data Augmentation configs
+# data augmentation configs
 da_kwargs={
 'do_elastic_deform': True,
 'alpha':(0., 1500.),

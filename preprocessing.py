@@ -1,5 +1,6 @@
 __author__ = 'Paul F. Jaeger'
 
+import configs as cf
 import os
 import dicom
 import dicom_numpy
@@ -8,33 +9,41 @@ import numpy as np
 from skimage.transform import resize
 
 
-def collectPaths(root_dir, out_dir, split):
+def preprocess_dataset(raw_data_dir, out_dir, set):
+    """
+    load and concat the raw dicom/nrrd data, resample it to equalize the spacings and save out
+    the numpy arrays per patient. Additionally, determine the class_weights as 1-class_ratio
+    """
 
-    split_dir = os.path.join(root_dir, split)
-    split_dir_seg = split_dir + '-segm'
-    out_split_dir = os.path.join(out_dir, split) if split is not 'leaderboard' else os.path.join(out_dir, 'train')
-    if not os.path.exists(out_split_dir):
-        os.mkdir(out_split_dir)
+    set_dir = os.path.join(raw_data_dir, set)
+    set_dir_seg = set_dir + '-segm'
+    out_set_dir = os.path.join(out_dir, set) if set is not 'leaderboard' else os.path.join(out_dir, 'train')
+    if not os.path.exists(out_set_dir):
+        os.mkdir(out_set_dir)
 
-    seg_paths = [os.path.join(split_dir_seg, ii) for ii in os.listdir(split_dir_seg)]
+    seg_paths = [os.path.join(set_dir_seg, ii) for ii in os.listdir(set_dir_seg)]
+    collect_class_weights = []
     ix = 0
-    for path, dirs, files in os.walk(split_dir):
+    for path, dirs, files in os.walk(set_dir):
         if len(files) > 0:
-
             dicom_slices = [dicom.read_file(os.path.join(path, f)) for f in files]
             img_arr, img_affine = dicom_numpy.combine_slices(dicom_slices)
-
             pid = path.split('/')[-3]
             seg_path = [seg_path for seg_path in seg_paths if pid in seg_path][0]
             seg_arr, seg_info = nrrd.read(seg_path)
-            if img_arr.shape==seg_arr.shape:
+            if img_arr.shape == seg_arr.shape:
                 data_arr = np.concatenate((img_arr[:, :, :, np.newaxis], seg_arr[:, :, :, np.newaxis]), axis=3)
                 rs_data_arr = resample_array(data_arr, img_affine)
-                np.save(os.path.join(out_split_dir, '{}.npy'.format(path.split('/')[-3])), rs_data_arr)
-                print "processed", ix, os.path.join(out_split_dir, '{}.npy'.format(path.split('/')[-3]))
+                class_ratios = np.unique(rs_data_arr[..., 1], return_counts=True)[1]/float(rs_data_arr[...,1].size)
+                collect_class_weights.append(class_ratios)
+                np.save(os.path.join(out_set_dir, '{}.npy'.format(path.split('/')[-3])), rs_data_arr)
+                print "processed", ix, os.path.join(out_set_dir, '{}.npy'.format(path.split('/')[-3]))
             else:
-                print "failed to process due to shape mismatch:", img_arr.shape, seg_arr.shape, pid, split
+                print "failed to process due to shape mismatch: {} {} {} {}".format(
+                    img_arr.shape, seg_arr.shape, pid, set)
             ix += 1
+    class_weights = 1 - np.mean(np.array(collect_class_weights), axis=0)
+    print "class weights for set {} and classes BG, PZ, GC:".format(set), class_weights
 
 
 def resample_array(src_img, img_affine, target_spacing=0.4):
@@ -48,18 +57,14 @@ def resample_array(src_img, img_affine, target_spacing=0.4):
             out_array[:, :, slc, mod] = np.round(
             resize(src_img[:, :, slc, mod].astype(float), out_array.shape[:2], order=3, preserve_range=True,
                    mode='edge')).astype('float32')
-
     return out_array
 
 
 if __name__ == "__main__":
 
+    if not os.path.exists(cf.pp_data_dir):
+        os.mkdir(cf.pp_data_dir)
 
-    root_dir = '/mnt/hdd/data/dm/'
-    out_dir = os.path.join(root_dir, 'numpy_arrays')
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
-
-    collectPaths(root_dir, out_dir, 'train')
-    # collectPaths(root_dir, out_dir, 'leaderboard')
-    # collectPaths(root_dir, out_dir, 'test')
+    data_sets = ['train', 'leaderboard', 'test']
+    for ds in data_sets:
+        preprocess_dataset(cf.raw_data_dir, cf.pp_data_dir, ds)

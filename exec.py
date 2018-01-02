@@ -17,14 +17,13 @@ from plotting import TrainingPlot_2Panel, plot_batch_prediction
 
 def train(fold):
     """
-    performs the training routine for a given fold. saves plots and selected parameters to the experiment dir
+    perform the training routine for a given fold. saves plots and selected parameters to the experiment dir
     specified in the configs.
     """
 
     # set up experiment dirs and copy config file
     utils.prep_exp(cf)
-
-    logger = utils.get_logger(cf)
+    logger = utils.get_logger(cf.exp_dir)
     logger.info('performing training in {d}D over fold {f} on experiment {e}'.format(d=cf.dim, f=fold, e=cf.exp_dir))
     logger.info('intitializing tensorflow graph...')
 
@@ -33,17 +32,13 @@ def train(fold):
     y = tf.placeholder('float', shape=cf.network_output_shape)
     learning_rate = tf.Variable(cf.learning_rate)
     logits = model.create_UNet(x, cf.n_features_root, cf.n_classes, dim=cf.dim, logger=logger)
-    if cf.loss_name == 'weighted_cross_entropy':
-        class_weights = tf.placeholder('float')
-        loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, class_weights, cf.dim)
-    else:
-        loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, cf.dim)
+    loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, cf.class_weights, cf.dim)
     predicter = tf.nn.softmax(logits)
     dice_per_class = utils.get_dice_per_class(logits, y, dim=cf.dim)
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
     saver = tf.train.Saver()
 
-    # set up training
+    # prepare monitoring
     metrics = {}
     metrics['train'] = {'loss': [None], 'dices': np.zeros(shape=(1, cf.n_classes))} # CHECK IF THIS WORKS
     metrics['val'] = {'loss': [None], 'dices': np.zeros(shape=(1, cf.n_classes))}
@@ -66,13 +61,8 @@ def train(fold):
             train_dices_running_batch_mean = np.zeros(shape=(1, cf.n_classes))
             for _ in range(cf.n_train_batches):
                 batch = next(batch_gen['train'])
-                if cf.loss_name == 'weighted_cross_entropy':
-                    cw = utils.get_class_weights(batch['seg'])
-                    feed_dict = {x: batch['data'], y: batch['seg'], class_weights: cw}
-                else:
-                    feed_dict = {x: batch['data'], y: batch['seg']}
                 train_loss, train_dices, _ = sess.run(
-                    (loss, dice_per_class, optimizer), feed_dict=feed_dict)
+                    (loss, dice_per_class, optimizer), feed_dict={x: batch['data'], y: batch['seg']})
                 train_loss_running_mean += train_loss / cf.n_train_batches
                 train_dices_running_batch_mean += train_dices / cf.n_train_batches
             metrics['train']['loss'].append(train_loss_running_mean)
@@ -83,19 +73,13 @@ def train(fold):
             val_dices_running_batch_mean = np.zeros(shape=(1, cf.n_classes))
             for _ in range(cf.n_val_batches):
                 batch = next(batch_gen['val'])
-                if cf.loss_name == 'weighted_cross_entropy':
-                    cw = utils.get_class_weights(batch['seg']) # DO GLOBALLY
-                    feed_dict = {x: batch['data'], y: batch['seg'], class_weights: cw}
-                else:
-                    feed_dict = {x: batch['data'], y: batch['seg']}
-                val_loss, val_dices = sess.run(
-                    (loss, dice_per_class), feed_dict=feed_dict)
+                val_loss, val_dices = sess.run((loss, dice_per_class), feed_dict={x: batch['data'], y: batch['seg']})
                 val_loss_running_mean += val_loss / cf.n_val_batches
                 val_dices_running_batch_mean[0] += val_dices / cf.n_val_batches
             metrics['val']['loss'].append(val_loss_running_mean)
             metrics['val']['dices'] = np.append(metrics['val']['dices'], val_dices_running_batch_mean, axis=0)
 
-            #evaluate epoch
+            # evaluate epoch
             val_loss = metrics['val']['loss'][-1]
             val_dices = metrics['val']['dices'][-1]
             if val_loss < best_metrics['loss'][0]:
@@ -113,26 +97,29 @@ def train(fold):
                 best_metrics['dices'][cf.n_classes][1] = epoch
                 saver.save(sess, os.path.join(cf.exp_dir, 'params_{}'.format(fold)))
 
-            # plot updated monitoring and prediction example
+            # update monitoring and prediction plots
             TrainingPlot.update_and_save(metrics, best_metrics)
             batch = next(batch_gen['val'])
             correct_prediction = np.argmax(sess.run((predicter), feed_dict={x: batch['data']}), axis=-1)
             outfile = cf.plot_dir + '/pred_example_{}.png'.format(fold) #set fold -> epoch to keep plots from all epochs
-            plot_batch_prediction(batch, correct_prediction, cf.n_classes, outfile, dim=cf.dim)
+            plot_batch_prediction(batch['data'], batch['seg'], correct_prediction, cf.n_classes, outfile, dim=cf.dim)
             logger.info('trained epoch {e}: val_loss {l}, val_dices: {d}, took {t} sec.'.format(
                 e=epoch, l=np.round(val_loss, 3), d=val_dices, t=np.round(time.time() - start_time, 0)))
 
 
 def test(folds):
     """
-    performs
+    create and evaluate predictions for the held-out test set. Predictions can be averaged over several models
+    trained during cross validation (specified by "folds"). Predictions are further averaged over 4 different input
+    orientations obtained by mirroring (test-time data augmentation). The averaged predictions for each patient are
+    saved out for further statistics and plotted to the cf.test_dir and the final dice scores per class are printed.
     """
-    logger = utils.get_logger(cf)
+    logger = utils.get_logger(cf.exp_dir)
     logger.info('performing testing in {d}D over fold(s) {f} on experiment {e}'.format(d=cf.dim, f=folds, e=cf.exp_dir))
     logger.info('intitializing tensorflow graph...')
     tf.reset_default_graph()
     x = tf.placeholder('float', shape=cf.network_input_shape)
-    logits, variables = model.create_UNet(x, cf.n_features_root, cf.n_classes, dim=cf.dim, logger=logger)
+    logits = model.create_UNet(x, cf.n_features_root, cf.n_classes, dim=cf.dim, logger=logger)
     predicter = tf.nn.softmax(logits)
     saver = tf.train.Saver()
     logger.info('intitializing test generator...')
@@ -158,10 +145,9 @@ def test(folds):
 
                 test_arr = np.flip(np.flip(test_data_dict[pid]['data'], axis=cf.dim-1), axis=cf.dim)
                 patient_fold_prediction.append(np.flip(np.flip(sess.run(predicter, feed_dict={x: test_arr}), axis=cf.dim-1), axis=cf.dim))
-
                 pred_dict[pid].append(np.mean(np.array(patient_fold_prediction), axis=0))
 
-    logger.info('finalizing predictions...')
+    logger.info('evaluating averaged predictions...')
     final_dices = []
     for ix, pid in enumerate(test_data_dict.keys()):
         final_pred_soft = np.mean(np.array(pred_dict[pid]), axis=0)
@@ -170,9 +156,9 @@ def test(folds):
         avg_dices = utils.numpy_volume_dice_per_class(utils.get_one_hot_prediction(final_pred_correct, cf.n_classes), seg)
         final_dices.append(avg_dices)
         logger.info('avg dices for patient {p} over {a} preds: {d}'.format(p=pid, a=len(pred_dict[pid]), d=avg_dices))
-        # np.save(os.path.join(cf.test_dir, '{}_pred_final.npy'.format(pid)), np.concatenate((final_pred_soft[np.newaxis], seg[np.newaxis])))
-        # plot_batch_prediction(test_data_dict[pid], final_pred_correct, cf.n_classes,
-        #                       os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
+        np.save(os.path.join(cf.test_dir, '{}_pred_final.npy'.format(pid)), np.concatenate((final_pred_soft[np.newaxis], seg[np.newaxis])))
+        plot_batch_prediction(test_data_dict[pid]['data'], seg, final_pred_correct, cf.n_classes,
+                              os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
 
     logger.info('final dices mean: {}'.format(np.mean(final_dices, axis=0)))
     logger.info('final dices std: {}'.format(np.std(final_dices, axis=0)))
