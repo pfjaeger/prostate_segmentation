@@ -7,7 +7,7 @@ python preprocessing.py
 python exec.py
 python exec.py --mode test --exp /path/to/exp/dir 
 
-##How to install locally
+## How to install locally
 
 Install dependencies
 ```
