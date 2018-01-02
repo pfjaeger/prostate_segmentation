@@ -63,10 +63,10 @@ def create_data_gen_pipeline(patient_data, cf, test_pids=None, do_aug=True):
     if test_pids is None:
         data_gen = BatchGenerator(patient_data, batch_size=cf.batch_size,
                                  pre_crop_size=cf.pre_crop_size, dim=cf.dim)
-        cf.n_workers = 1
     else:
         data_gen = TestGenerator(patient_data, batch_size=cf.batch_size, n_batches=None,
                                  pre_crop_size=cf.pre_crop_size, test_pids=test_pids, dim=cf.dim)
+        cf.n_workers = 1
 
     my_transforms = []
     if do_aug:
@@ -140,6 +140,8 @@ class TestGenerator(DataLoaderBase):
 
     def generate_train_batch(self):
 
+        if self.patient_ix == len(self.test_pids):
+            raise StopIteration
         pid = self.test_pids[self.patient_ix]
         patient = self._data[pid]
         shp = patient['data'].shape
@@ -162,9 +164,9 @@ class TestGenerator(DataLoaderBase):
             data_arr = data_arr[np.newaxis]
             seg_arr = seg_arr[np.newaxis]
 
+
         self.patient_ix += 1
-        if self.patient_ix == len(self.test_pids):
-            raise StopIteration
+
         return {'data': data_arr.astype('float32'), 'seg': seg_arr.astype('float32'), 'pid': pid}
 
 

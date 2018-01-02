@@ -32,7 +32,7 @@ def train(fold):
     x = tf.placeholder('float', shape=cf.network_input_shape)
     y = tf.placeholder('float', shape=cf.network_output_shape)
     learning_rate = tf.Variable(cf.learning_rate)
-    logits, variables = model.create_UNet(x, cf.n_features_root, cf.n_classes, dim=cf.dim, logger=logger)
+    logits = model.create_UNet(x, cf.n_features_root, cf.n_classes, dim=cf.dim, logger=logger)
     if cf.loss_name == 'weighted_cross_entropy':
         class_weights = tf.placeholder('float')
         loss = utils._get_loss(logits, y, cf.n_classes, cf.loss_name, class_weights, cf.dim)
@@ -98,7 +98,6 @@ def train(fold):
             #evaluate epoch
             val_loss = metrics['val']['loss'][-1]
             val_dices = metrics['val']['dices'][-1]
-            logger.info('trained epoch {e}: val_loss {l}, val_dices: {d}'.format(e=epoch, l=val_loss, d=val_dices))
             if val_loss < best_metrics['loss'][0]:
                 best_metrics['loss'][0] = val_loss
                 best_metrics['loss'][1] = epoch
@@ -147,21 +146,20 @@ def test(folds):
             saver.restore(sess, os.path.join(cf.exp_dir, 'params_{}'.format(fold)))
 
             for ix, pid in enumerate(test_data_dict.keys()):
-                patient_prediction = []
-
+                patient_fold_prediction = []
                 test_arr = test_data_dict[pid]['data']
-                patient_prediction.append(sess.run(predicter, feed_dict={x: test_arr}))
+                patient_fold_prediction.append(sess.run(predicter, feed_dict={x: test_arr}))
 
                 test_arr = np.flip(test_data_dict[pid]['data'], axis=cf.dim-1)
-                patient_prediction.append(np.flip(sess.run(predicter, feed_dict={x: test_arr}),axis=cf.dim-1))
+                patient_fold_prediction.append(np.flip(sess.run(predicter, feed_dict={x: test_arr}),axis=cf.dim-1))
 
                 test_arr = np.flip(test_data_dict[pid]['data'], axis=cf.dim)
-                patient_prediction.append(np.flip(sess.run(predicter, feed_dict={x: test_arr}), axis=cf.dim))
+                patient_fold_prediction.append(np.flip(sess.run(predicter, feed_dict={x: test_arr}), axis=cf.dim))
 
                 test_arr = np.flip(np.flip(test_data_dict[pid]['data'], axis=cf.dim-1), axis=cf.dim)
-                patient_prediction.append(np.flip(np.flip(sess.run(predicter, feed_dict={x: test_arr}), axis=cf.dim-1), axis=cf.dim))
+                patient_fold_prediction.append(np.flip(np.flip(sess.run(predicter, feed_dict={x: test_arr}), axis=cf.dim-1), axis=cf.dim))
 
-                pred_dict[pid].append(np.mean(np.array(patient_prediction), axis=0))
+                pred_dict[pid].append(np.mean(np.array(patient_fold_prediction), axis=0))
 
     logger.info('finalizing predictions...')
     final_dices = []
@@ -172,9 +170,9 @@ def test(folds):
         avg_dices = utils.numpy_volume_dice_per_class(utils.get_one_hot_prediction(final_pred_correct, cf.n_classes), seg)
         final_dices.append(avg_dices)
         logger.info('avg dices for patient {p} over {a} preds: {d}'.format(p=pid, a=len(pred_dict[pid]), d=avg_dices))
-        np.save(os.path.join(cf.test_dir, '{}_pred_final.npy'.format(pid)), np.concatenate((final_pred_soft[np.newaxis], seg[np.newaxis])))
-        plot_batch_prediction(test_data_dict[pid], final_pred_correct, cf.n_classes,
-                              os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
+        # np.save(os.path.join(cf.test_dir, '{}_pred_final.npy'.format(pid)), np.concatenate((final_pred_soft[np.newaxis], seg[np.newaxis])))
+        # plot_batch_prediction(test_data_dict[pid], final_pred_correct, cf.n_classes,
+        #                       os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
 
     logger.info('final dices mean: {}'.format(np.mean(final_dices, axis=0)))
     logger.info('final dices std: {}'.format(np.std(final_dices, axis=0)))

@@ -8,7 +8,7 @@ import os
 
 
 # name of current experiment / output folder
-experiment_name = 'test_merge'
+experiment_name = 'test_review'
 
 # input and output directory paths
 root_dir = '/mnt/hdd/data/dm/numpy_arrays/'
@@ -63,9 +63,9 @@ if dim == 2:
     network_input_shape = [None, patch_size[0], patch_size[1], n_channels]
     network_output_shape = [None, patch_size[0], patch_size[1], n_classes]
 
-    n_train_batches = 80
-    n_val_batches = 20
-    batch_size= 10
+    n_train_batches = 40
+    n_val_batches = 10
+    batch_size= 20
     da_kwargs['angle_x'] = (0, 2*3.14)
     da_kwargs['angle_y'] = (0, 2*3.14)
 

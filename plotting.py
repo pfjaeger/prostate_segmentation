@@ -52,7 +52,6 @@ def plot_batch_prediction(batch, prediction, num_classes, outfile, dim=2, n_sele
             axarr[m, b].axis('off')
             axarr[m, b].imshow(show_arrays[b, :, :, m], cmap=cmap, vmin=vmin, vmax=vmax)
 
-    print "SAVING PLOT AT", outfile
     plt.savefig(outfile)
     plt.close(fig)
 

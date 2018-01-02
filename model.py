@@ -10,16 +10,17 @@ from tensorflow.contrib.layers.python.layers import initializers
 def create_UNet(x, features_root, n_classes, dim, logger):
 
     if dim == 2:
-        net, variables = create_2D_UNet(x, features_root, n_classes)
+        net = create_2D_UNet(x, features_root, n_classes)
     elif dim == 3:
-        net, variables = create_3D_UNet(x, features_root, n_classes)
+        net = create_3D_UNet(x, features_root, n_classes)
     else:
         raise ValueError("wrong dimension selected in configs.")
 
+    logger.info('created network:')
     for i, c in net.iteritems():
-        print(i, c.get_shape().as_list())
+        logger.info('{}: {}'.format(i, c.get_shape().as_list()))
 
-    return net, variables
+    return net['out_map']
 
 
 def leaky_relu(x):
@@ -82,7 +83,7 @@ def create_2D_UNet(x, features_root, n_classes):
 
         net['out_map'] = instance_norm(slim.conv2d(net['decode/conv4_2'], n_classes, [1, 1], activation_fn=None))
 
-    return net['out_map'], tf.global_variables()
+    return net
 
 
 def create_3D_UNet(x, features_root=16, n_classes=2):
@@ -141,4 +142,4 @@ def create_3D_UNet(x, features_root=16, n_classes=2):
 
         net['out_map'] = instance_norm(slim.conv3d(net['decode/conv4_2'], n_classes, [1, 1, 1], activation_fn=None))
 
-    return net['out_map'], tf.global_variables()
+    return net
