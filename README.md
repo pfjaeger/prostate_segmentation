@@ -18,9 +18,10 @@ Download the Data set from https://wiki.cancerimagingarchive.net/display/DOI/NCI
 
 ## Execute
 
-Specify the path to downloaded data in configs.py, then:
+Specify you local I/O paths in configs.py
+
 ```
 python preprocessing.py
-python exec.py #train the network. --folds 0 1 2 3 ... specifies the CV folds to train
+python exec.py               #train the network. --folds 0 1 2 3 ... specifies the CV folds to train
 python exec.py --mode test --exp /path/to/exp/dir  # get test set predictions and final dice scores
 ```
