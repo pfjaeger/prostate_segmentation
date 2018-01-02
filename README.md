@@ -22,6 +22,6 @@ Specify you local I/O paths in configs.py
 
 ```
 python preprocessing.py
-python exec.py               #train the network. --folds 0 1 2 3 ... specifies the CV folds to train
+python exec.py               #train the network. --folds 0 1 2... specifies which CV folds to train
 python exec.py --mode test --exp /path/to/exp/dir  # get test set predictions and final dice scores
 ```
