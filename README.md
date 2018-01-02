@@ -18,7 +18,7 @@ Download the Data set from https://wiki.cancerimagingarchive.net/display/DOI/NCI
 
 ## Execute
 
-Specify local data paths and in config.py
+Specify the path to downloaded data in configs.py, then:
 ```
 python preprocessing.py
 python exec.py
