@@ -13,7 +13,7 @@ python exec.py --mode test --exp /path/to/exp/dir
 
 Install dependencies
 ```
-pip install numpy scipy nilearn matplotlib scikit-image nibabel
+pip install numpy scipy tensorflow tensorflow-gpu sklearn matplotlib dicom dicom_numpy pynrrd
 ```
 
 Install batchgenerators
