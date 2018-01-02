@@ -2,10 +2,12 @@
 CG and PZ Prostate segementation on T2-weighted MR images.
 
 ## How to use it
-Specify local data paths in config.py
+Specify local data paths and in config.py
+```
 python preprocessing.py
 python exec.py
 python exec.py --mode test --exp /path/to/exp/dir 
+```
 
 ## How to install locally
 
