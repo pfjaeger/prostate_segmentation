@@ -7,8 +7,8 @@ CG and PZ Prostate segementation on T2-weighted MR images.
 ```
 pip install numpy scipy tensorflow tensorflow-gpu sklearn matplotlib dicom dicom_numpy pynrrd
 
-git clone https://phabricator.mitk.org/source/dldabg.git
-cd dldabg
+https://github.com/MIC-DKFZ/batchgenerators.git
+cd batchgenerators
 pip install .
 ```
 
