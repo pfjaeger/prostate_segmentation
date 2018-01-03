@@ -1,5 +1,5 @@
 # nci_isbi2013_segmentation by Paul F. Jaeger
-CG and PZ Prostate segementation on T2-weighted MR images.
+CG and PZ Prostate segementation on T2-weighted MR images.This framework is able to train 2D and 3D UNet architectures on this data.
 
 
 ## Get Dependencies
@@ -19,10 +19,23 @@ Make sure all 6 downloaded folders are placed in the same directory and specify 
 
 ## Execute
 
-Specify you local I/O paths in configs.py
+Preprocess the data:
 
 ```
 python preprocessing.py
-python exec.py               #train the network. --folds 0 1 2... specifies which CV folds to train
-python exec.py --mode test --exp /path/to/exp/dir  # get test set predictions and final dice scores
+'''
+
+Train the network (change settings in configs.py if desired. by default trains a 2D UNet with dice loss.)
+'''
+python exec.py               
+'''
+by default, the train data is split into 80% training and 20% test data. If you want to run a cross-validation, specify which folds to train like this (the default split is fold 0 of a 5 fold-cross validation):
+'''
+python exec.py --folds 0 1 2 .... # specify any combination of folds [0-4]              
+'''
+During training the configs file is copied to the specified experiment folder (default is raw_data_dir/my_experiment).
+Get test set predictions of a trained model:
+'''
+python exec.py --mode test --exp /path/to/experiment/folder 
 ```
+This saves ndarray softmax predictions and predictions_plots to /path/to/experiment/folder /test_files
