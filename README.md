@@ -14,7 +14,8 @@ pip install .
 
 
 ## Get the Data
-Download the Data set from https://wiki.cancerimagingarchive.net/display/DOI/NCI-ISBI+2013+Challenge%3A+Automated+Segmentation+of+Prostate+Structures
+Download the Data set from https://wiki.cancerimagingarchive.net/display/DOI/NCI-ISBI+2013+Challenge%3A+Automated+Segmentation+of+Prostate+Structures.
+Make sure all 6 downloaded folders are placed in the same directory and specify this location as 'raw_data_dir' in configs.py
 
 ## Execute
 
