@@ -163,7 +163,7 @@ class BatchGenerator(DataLoaderBase):
 class TestGenerator(DataLoaderBase):
     """
     create the test generator. Step through the test dataset and return dictionaries per patient. For simplicity,
-    test data is very conservatively padded and cropped, to be processed by the network. This could be improved by only
+    test data is very conservatively padded and cropped, to be processed by the network. This should be improved by only
     padding each patient individually to the next highest processable size and crop the prediction
     back to the original image size afterwards.
     """

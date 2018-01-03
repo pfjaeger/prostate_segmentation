@@ -157,8 +157,8 @@ def test(folds):
         final_dices.append(avg_dices)
         logger.info('avg dices for patient {p} over {a} preds: {d}'.format(p=pid, a=len(pred_dict[pid]), d=avg_dices))
         np.save(os.path.join(cf.test_dir, '{}_pred_final.npy'.format(pid)), np.concatenate((final_pred_soft[np.newaxis], seg[np.newaxis])))
-        plot_batch_prediction(test_data_dict[pid]['data'], seg, final_pred_correct, cf.n_classes,
-                              os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
+        # plot_batch_prediction(test_data_dict[pid]['data'], seg, final_pred_correct, cf.n_classes,
+        #                       os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
 
     logger.info('final dices mean: {}'.format(np.mean(final_dices, axis=0)))
     logger.info('final dices std: {}'.format(np.std(final_dices, axis=0)))

@@ -102,6 +102,7 @@ def get_logger(exp_dir):
     print('Logging to {}'.format(log_file))
     hdlr = logging.FileHandler(log_file)
     logger.addHandler(hdlr)
+    logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG)
     return logger
 
