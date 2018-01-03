@@ -38,4 +38,4 @@ Get test set predictions of a trained model:
 ```
 python exec.py --mode test --exp /path/to/experiment/folder 
 ```
-This prints evaluation scores, saves ndarray softmax predictions and predictions_plots to /path/to/experiment/folder /test_files
+This prints evaluation scores, saves ndarray softmax predictions and predictions_plots to /path/to/experiment/folder /test_files . By default this gets predictions only from the "fold 0 model". use --folds to average predictions over several trained models.
