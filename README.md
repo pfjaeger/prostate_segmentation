@@ -29,7 +29,7 @@ Train the network (change settings in configs.py if desired. by default trains a
 ```
 python exec.py               
 ```
-by default, the train data is split into 80% training and 20% test data. If you want to run a cross-validation, specify which folds to train like this (the default split is fold 0 of a 5 fold-cross validation):
+by default, one training is executed, where the training data is split into 80% training and 20% validation data. If you want to run a cross-validation, specify which folds to train (the default split is fold 0 of a 5 fold-cross validation):
 ```
 python exec.py --folds 0 1 2 .... # specify any combination of folds [0-4]              
 ```
@@ -38,4 +38,4 @@ Get test set predictions of a trained model:
 ```
 python exec.py --mode test --exp /path/to/experiment/folder 
 ```
-This saves ndarray softmax predictions and predictions_plots to /path/to/experiment/folder /test_files
+This prints evaluation scores, saves ndarray softmax predictions and predictions_plots to /path/to/experiment/folder /test_files
