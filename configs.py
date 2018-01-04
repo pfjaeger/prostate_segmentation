@@ -19,12 +19,12 @@ plot_dir = os.path.join(exp_dir, 'plots')
 
 
 # data dimensions
-dim = 3
+dim = 2     # [2,3] train a 2D or 3D U-Net architecture.
 n_channels = 1
 n_classes = 3
 
 # seed for cross validation splits
-seed=12345
+seed = 12345
 
 # number of cpu used for multi-threaded batch generation
 n_workers = 10
@@ -35,7 +35,7 @@ n_epochs = 300
 learning_rate = 10**(-3)
 
 # the loss function to be used: either one of 'cross_entropy', 'weighted_cross_entropy', or 'dice_coefficient'
-loss_name = 'weighted_cross_entropy' #'dice_coefficient'
+loss_name = 'dice_coefficient'
 
 #taken from preprocessing.py . weights are 1 minus averaged class occurance averaged over patients in the training set
 class_weights = [0.0178, 0.994, 0.988]
