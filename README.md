@@ -1,5 +1,6 @@
 # nci_isbi2013_segmentation by Paul F. Jaeger
-CG and PZ Prostate segementation on T2-weighted MR images.This framework is able to train 2D and 3D UNet architectures on this data.
+CG and PZ Prostate segementation on T2-weighted MR images.This framework is able to train 2D and 3D UNet architectures on this data. See the project report for more info:
+https://drive.google.com/file/d/1WhBnVY1xc7pXJHaq9Y2PyaFW4WUQiZP0/view?usp=sharing
 
 
 ## Get Dependencies
