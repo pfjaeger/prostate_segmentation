@@ -12,7 +12,7 @@ import data_loader
 from plotting import TrainingPlot_2Panel, plot_batch_prediction
 
 
-#DISCLAIMER
+#DISCLAIMER : This script's structure does not reflect my usual coding-style, but is following a 'low-level-code-policy'.
 
 
 def train(fold):

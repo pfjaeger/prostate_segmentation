@@ -8,12 +8,12 @@ import os
 
 
 # name of current experiment / output folder
-experiment_name = 'test_review'
+experiment_name = 'example_experiment'
 
 # input and output directory paths
 raw_data_dir =  '/mnt/hdd/data/dm/'
 pp_data_dir = os.path.join(raw_data_dir, 'preprocessed_data')
-exp_dir= os.path.join('/mnt/hdd/experiments/segmentation', experiment_name)
+exp_dir= os.path.join(raw_data_dir, experiment_name) #change raw_data_dir to desired output folder
 test_dir = os.path.join(exp_dir, 'test_files')
 plot_dir = os.path.join(exp_dir, 'plots')
 
