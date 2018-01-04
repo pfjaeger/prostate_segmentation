@@ -111,8 +111,8 @@ def test(folds):
     """
     create and evaluate predictions for the held-out test set. Predictions can be averaged over several models
     trained during cross validation (specified by "folds"). Predictions are further averaged over 4 different input
-    orientations obtained by mirroring (test-time data augmentation). The averaged predictions for each patient are
-    saved out for further statistics and plotted to the cf.test_dir and the final dice scores per class are printed.
+    orientations obtained by mirroring (test-time data augmentation). The averaged softmax predictions for each patient
+    are saved out for further statistics and plotted to the cf.test_dir and the final dice scores per class are printed.
     """
     logger = utils.get_logger(cf.exp_dir)
     logger.info('performing testing in {d}D over fold(s) {f} on experiment {e}'.format(d=cf.dim, f=folds, e=cf.exp_dir))
@@ -157,15 +157,14 @@ def test(folds):
         final_dices.append(avg_dices)
         logger.info('avg dices for patient {p} over {a} preds: {d}'.format(p=pid, a=len(pred_dict[pid]), d=avg_dices))
         np.save(os.path.join(cf.test_dir, '{}_pred_final.npy'.format(pid)), np.concatenate((final_pred_soft[np.newaxis], seg[np.newaxis])))
-        # plot_batch_prediction(test_data_dict[pid]['data'], seg, final_pred_correct, cf.n_classes,
-        #                       os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
+        plot_batch_prediction(test_data_dict[pid]['data'], seg, final_pred_correct, cf.n_classes,
+                              os.path.join(cf.test_dir, '{}_pred_final.png'.format(pid)), dim=cf.dim)
 
     logger.info('final dices mean: {}'.format(np.mean(final_dices, axis=0)))
     logger.info('final dices std: {}'.format(np.std(final_dices, axis=0)))
 
 
 if __name__ == '__main__':
-
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str,  default='train', help='must be set to train or test mode.')
